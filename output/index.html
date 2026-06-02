@@ -21,7 +21,250 @@
 
       <section id="featured">
         <article>
-          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day1-summary.html">Day 1：从不知道博客是什么，到拥有自己的网站</a></h1>
+          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day2-codex-echobird.html">Day 2：折腾 Codex CLI、EchoBird 和一堆 API Key 的一天</a></h1>
+<div class="post-info">
+  <time datetime="2026-06-02T23:50:00+08:00">
+    2026-06-02
+  </time>
+    <span> · </span>
+    <span>博客</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/codex.html">Codex</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/echobird.html">EchoBird</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/deepseek.html">DeepSeek</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/api-key.html">API Key</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/huan-jing-bian-liang.html">环境变量</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/conhost.html">conhost</a>
+    </span>
+</div>          <div class="entry-content">
+            <h2>前言</h2>
+<p>Day 1 搭好了网站，Day 2 决定搞点硬核的——装 OpenAI 的 Codex CLI，再找个好用的 GUI 工具来管理 AI 模型。</p>
+<p>结果一天下来，收获不少，坑也踩了不少。</p>
+<hr>
+<h2>一、装 Codex CLI</h2>
+<h3>什么是 Codex CLI</h3>
+<p>Codex CLI 是 OpenAI 官方出的一个命令行 AI 编程助手，类似 Claude Code，但它是 OpenAI 家的。装了它就能在终端里跟 AI 对话、让它帮你写代码。</p>
+<h3>安装过程</h3>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>@openai/codex
+</code></pre></div>
+
+<p>一行命令，装上了 v0.136.0。过程很顺利，下载速度还行。</p>
+<h3>⚠️ 问题来了：登录墙</h3>
+<p>装完一跑 <code>codex doctor</code>，傻眼了：</p>
+<div class="highlight"><pre><span></span><code>✗ auth         stored credentials are incomplete
+✗ reachability one or more required provider endpoints are unreachable
+</code></pre></div>
+
+<p>Codex 启动后弹出三个登录选项：
+1. <strong>Sign in with ChatGPT</strong> — 需要 ChatGPT 账号
+2. <strong>Sign in with Azure</strong> — 需要 Azure 账号
+3. <strong>Use API Key</strong> — 需要 OpenAI API Key</p>
+<p><strong>三个都要花钱，三个在国内网络下都不好使。</strong></p>
+<p>ChatGPT 和 OpenAI 的 API 端点（<code>chatgpt.com</code>）在国内根本连不上，连 DNS 都解析不出来。</p>
+<h3>尝试接入 DeepSeek</h3>
+<p>不死心，试了用环境变量的方式接入 DeepSeek：</p>
+<div class="highlight"><pre><span></span><code><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;你的DeepSeek Key&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+<span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;OPENAI_BASE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;https://api.deepseek.com/v1&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Codex 确实连上了 DeepSeek，显示 <code>model: deepseek-chat, provider: openai</code>，看起来没问题。但等了半天没有回复，最后超时了。</p>
+<p><strong>原因：</strong> Codex 用的是 OpenAI 的 <strong>Responses API</strong>，而 DeepSeek 支持的是 <strong>Chat Completions API</strong>，接口格式不兼容。</p>
+<h3>结论</h3>
+<blockquote>
+<p><strong>Codex CLI 目前无法直接使用国产模型（DeepSeek、GLM 等）。</strong></p>
+<p>它的 <code>--oss</code> 模式只支持本地的 Ollama 和 LMStudio，不支持在线 API 中转。</p>
+</blockquote>
+<p>最后决定暂时放弃 Codex，先把 Claude Code 用好。</p>
+<hr>
+<h2>二、下载 EchoBird</h2>
+<h3>什么是 EchoBird</h3>
+<p>EchoBird 是一个桌面端的 AI Agent 管理工具，可以配置各种模型（包括国产模型），提供 GUI 界面来使用 Claude Code、Codex 等工具。简单说就是一个"AI 工具的控制面板"。</p>
+<h3>下载过程</h3>
+<p>GitHub 地址：<code>https://github.com/edison7009/EchoBird</code></p>
+<p>下载 v5.1.5 Windows x64 安装包，8MB 左右。GitHub 下载速度一般，但还能接受。</p>
+<h3>体验</h3>
+<p>装好之后接入国产模型确实不错，DeepSeek、GLM 都能用。Claude Code 在小窗口里运行正常。</p>
+<hr>
+<h2>三、⚠️ 重大发现：终端最大化闪退</h2>
+<h3>现象</h3>
+<p>EchoBird 里启动 Claude Code 时，会弹出一个黑色终端窗口（类似 cmd 的小窗口）。在小窗口状态下一切正常，但<strong>只要点最大化按钮，窗口就闪退</strong>。</p>
+<p>闪退之后对话丢失，找了半天不知道去哪恢复。</p>
+<h3>排查过程</h3>
+<ol>
+<li>先怀疑是 EchoBird 的 bug，去 GitHub Issues 搜了一圈，没找到相关报告</li>
+<li>打开 Windows 事件查看器，发现了关键线索：</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="err">事件名称</span><span class="o">:</span><span class="w"> </span><span class="n">BEX64</span>
+<span class="n">P1</span><span class="o">:</span><span class="w"> </span><span class="n">conhost</span><span class="o">.</span><span class="na">exe</span>
+<span class="n">P8</span><span class="o">:</span><span class="w"> </span><span class="n">c0000409</span><span class="w">    </span><span class="err">←</span><span class="w"> </span><span class="err">栈缓冲区溢出</span>
+</code></pre></div>
+
+<ol>
+<li><strong>崩溃的不是 EchoBird，是 <code>conhost.exe</code>！</strong></li>
+</ol>
+<p><code>conhost.exe</code> 是 Windows 的控制台主机进程，所有终端窗口（cmd、PowerShell、以及 EchoBird 里嵌入的终端）都靠它来渲染。</p>
+<h3>根本原因</h3>
+<p>我的 Windows 10 版本是 <code>10.0.19041</code>（2004 版），这个版本的 <code>conhost.exe</code> 有已知的窗口大小调整崩溃 bug。当终端窗口从小尺寸突然变为最大化时，触发了缓冲区溢出，直接崩掉。</p>
+<h3>解决办法</h3>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>最佳</strong></td>
+<td>更新 Windows 10 到最新版本，微软已修复此 bug</td>
+</tr>
+<tr>
+<td><strong>临时</strong></td>
+<td>不用最大化按钮，用 <code>Win + ←/→</code> 分屏，或拖拽窗口边框</td>
+</tr>
+<tr>
+<td><strong>进阶</strong></td>
+<td>安装 Windows Terminal 替代 conhost</td>
+</tr>
+</tbody>
+</table>
+<h3>恢复丢失的对话</h3>
+<p>好消息是 Claude Code 的对话历史保存在本地：</p>
+<div class="highlight"><pre><span></span><code>C:\Users\asus\.claude\projects\
+</code></pre></div>
+
+<p>恢复命令：</p>
+<div class="highlight"><pre><span></span><code>claude<span class="w"> </span>--resume<span class="w">              </span><span class="c1"># 选择恢复哪个对话</span>
+claude<span class="w"> </span>--resume<span class="w"> </span>&lt;session-id&gt;<span class="w"> </span><span class="c1"># 恢复指定对话</span>
+</code></pre></div>
+
+<hr>
+<h2>四、更新 DeepSeek API Key</h2>
+<h3>问题</h3>
+<p>之前的 DeepSeek API Key 过期了，Claude Code 连不上 DeepSeek。</p>
+<h3>解决</h3>
+<p>去 <code>https://platform.deepseek.com/api_keys</code> 新建了一个 Key，然后更新了三个地方：</p>
+<p><strong>1. Hermes 配置文件</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># C:\Users\asus\.hermes\config.yaml</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deepseek</span>
+<span class="w">  </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sk-新Key</span>
+</code></pre></div>
+
+<p><strong>2. 系统环境变量</strong></p>
+<div class="highlight"><pre><span></span><code><span class="no">[System.Environment]</span><span class="p">::</span><span class="n">SetEnvironmentVariable</span><span class="p">(</span><span class="s2">&quot;DEEPSEEK_API_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;新Key&quot;</span><span class="p">,</span> <span class="s2">&quot;User&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>3. VS Code Cline 插件</strong></p>
+<p>Cline 的 API Key 存在 VS Code 的加密存储里，需要在插件设置界面手动更新。</p>
+<p>⚠️ <strong>教训：换 Key 的时候要记得所有用到这个 Key 的地方都要改，不然就会出现"这边能用那边不能用"的诡异问题。</strong></p>
+<hr>
+<h2>五、今天踩的坑总结</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>原因</th>
+<th>解决</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Codex 连不上</td>
+<td>国内网络无法访问 chatgpt.com</td>
+<td>暂时无解，等网络环境改善</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Codex 接 DeepSeek 无响应</td>
+<td>Responses API 和 Chat Completions API 不兼容</td>
+<td>放弃 Codex，用 Claude Code</td>
+</tr>
+<tr>
+<td>3</td>
+<td>终端最大化闪退</td>
+<td>conhost.exe 栈溢出（Win10 旧版本 bug）</td>
+<td>更新系统或不点最大化</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Claude Code 连不上 DeepSeek</td>
+<td>API Key 过期</td>
+<td>新建 Key，更新所有配置</td>
+</tr>
+<tr>
+<td>5</td>
+<td>换 Key 后 Cline 还是不能用</td>
+<td>只改了部分配置，遗漏了 VS Code 插件</td>
+<td>手动在插件设置里更新</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>六、花了多少钱</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>花费</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek API</td>
+<td>充值中（旧 Key 过期）</td>
+</tr>
+<tr>
+<td>Codex CLI</td>
+<td>免费（但用不了）</td>
+</tr>
+<tr>
+<td>EchoBird</td>
+<td>免费</td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td>免费（接 DeepSeek 用）</td>
+</tr>
+<tr>
+<td>其他工具</td>
+<td>免费</td>
+</tr>
+</tbody>
+</table>
+<p>今天的花费：<strong>基本为零</strong>，主要花的是时间和耐心。</p>
+<hr>
+<h2>七、接下来的计划</h2>
+<ul>
+<li>[ ] 测试 EchoBird + Codex 接国产模型的效果</li>
+<li>[ ] 更新 Windows 系统，修复 conhost 闪退问题</li>
+<li>[ ] 把博客自动部署到 Cloudflare Pages</li>
+<li>[ ] 继续学 Python</li>
+</ul>
+<h2>感想</h2>
+<p>今天最大的收获不是装了什么工具，而是学会了<strong>排查问题的方法</strong>。</p>
+<p>终端闪退的时候，第一反应是"EchoBird 有 bug"。但实际去事件查看器一查，发现是 Windows 系统的问题。<strong>不要凭感觉猜，要看日志。</strong></p>
+<p>还有就是：<strong>换 API Key 的时候，一定要把所有用到的地方都找出来一起改。</strong> 这个教训值一顿火锅。</p>
+<p><strong>ZeroToDev，Day 2 完成 ✅</strong></p>
+          </div>
+        </article>
+      </section>
+
+        <section id="content">
+          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
+          <ol id="posts-list">
+
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day1-summary.html" rel="bookmark" title="Permalink to Day 1：从不知道博客是什么，到拥有自己的网站">Day 1：从不知道博客是什么，到拥有自己的网站</a></h1>
+          </header>
 <div class="post-info">
   <time datetime="2026-06-01T22:49:00+08:00">
     2026-06-01
@@ -36,96 +279,11 @@
         <a href="https://zerotodev-4jq.pages.dev/tag/ge-ren-wang-zhan.html">个人网站</a>
     </span>
 </div>          <div class="entry-content">
-            <h2>起因</h2>
-<p>说实话，今天之前我连"博客"是什么都不太清楚。就知道别人老说"写个博客"，心想那是个啥？</p>
-<p>最近 AI 火了，装了个 Claude 试了试，一用就上瘾了。然后又搞了 VS Code、OpenClaw、DeepSeek API、小米 API，前前后后花了几十块钱。还用 Python 做了一个 C 盘清理工具叫 <strong>CleanBuddy</strong>。</p>
-<p>做了东西总得有个地方放吧？于是就有了这个网站。</p>
-<h2>今天干了啥</h2>
-<h3>1. 装了 Pelican</h3>
-<p>Pelican 是一个用 Python 写的静态网站生成器。你只需要写 Markdown 文件，它帮你生成整个网站。对我这种小白太友好了。</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pelican<span class="w"> </span>markdown
-</code></pre></div>
-
-<p>一行命令搞定。</p>
-<h3>2. 选了名字</h3>
-<p>想了很久，最后选了 <strong>ZeroToDev</strong> —— 从零到开发者。因为这就是我的故事。</p>
-<h3>3. 写了第一篇博客</h3>
-<p>其实就是把我的经历写下来：怎么装的 Claude，怎么上瘾的，怎么做出来的 CleanBuddy。写 Markdown 比想象中简单多了。</p>
-<h3>4. 注册了 Gitee</h3>
-<p>本来想用 GitHub，结果网络不稳定连不上。改用 Gitee（码云），国内的，速度快，中文界面。</p>
-<h3>5. 上传了 CleanBuddy 源码</h3>
-<p>用 Git 把代码传到了 Gitee，第一次用 Git，踩了不少坑：
-- 跑错目录，差点把整个电脑的文件都传上去
-- 密码认证失败，改用 SSH 密钥
-- 仓库地址末尾多了个 <code>+</code> 号，死活传不上去</p>
-<p>但最后都解决了。</p>
-<h3>6. 网站部署</h3>
-<p>把网站代码也传到了 Gitee，准备用 Gitee Pages 部署上线。</p>
-<h2>花了多少钱</h2>
-<table>
-<thead>
-<tr>
-<th>项目</th>
-<th>花费</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>DeepSeek API</td>
-<td>几十块</td>
-</tr>
-<tr>
-<td>小米 API</td>
-<td>几十块</td>
-</tr>
-<tr>
-<td>Claude Code</td>
-<td>免费试用</td>
-</tr>
-<tr>
-<td>VS Code</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>OpenClaw</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>Gitee</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>Pelican</td>
-<td>免费</td>
-</tr>
-</tbody>
-</table>
-<p>总花费：<strong>几十块</strong>。比一顿火锅便宜，但学到的东西比火锅多。</p>
-<h2>踩的坑</h2>
-<ol>
-<li><strong>Git 跑错目录</strong> — 在用户根目录初始化了仓库，差点把所有个人文件都传上去。教训：<code>cd</code> 到项目目录再操作！</li>
-<li><strong>Gitee 密码认证失败</strong> — 现在 Gitee 不让用密码推送代码了，要用 SSH 密钥或者私人令牌。</li>
-<li><strong>仓库地址多了个 <code>+</code> 号</strong> — 一个小符号导致 404 错误，排查了半天。</li>
-</ol>
-<h2>接下来的计划</h2>
-<ul>
-<li>完善 CleanBuddy 的功能</li>
-<li>做一个小游戏</li>
-<li>继续学 Python</li>
-<li>把网站设计得好看一点</li>
-</ul>
-<h2>感想</h2>
-<p>一天前我还不知道博客是什么，现在已经有了自己的网站、自己的代码仓库、自己的第一篇博客。</p>
-<p>技术这东西，真的不用等"准备好了"再开始。边做边学，遇到问题解决问题，这就是编程的乐趣。</p>
-<p><strong>ZeroToDev，Day 1 完成 ✅</strong></p>
+            <p>一个编程小白的第一天，从零开始搭建个人网站的完整记录</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day1-summary.html">Read more →</a>
           </div>
         </article>
-      </section>
-
-        <section id="content">
-          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
-          <ol id="posts-list">
-
+      </li>
 
 
 
