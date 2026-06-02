@@ -1,144 +1,50 @@
 <!DOCTYPE html>
-<html lang="chinese (simplified)">
-        <head>
-                        <meta charset="utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                        <meta name="generator" content="Pelican" />
-                        <title>ZeroToDev - 个人网站</title>
-                        <link rel="stylesheet" href="/theme/css/main.css" />
-        </head>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>个人网站 — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+</head>
 
-        <body id="index" class="home">
-                <header id="banner" class="body">
-                        <h1><a href="/">ZeroToDev</a></h1>
-                        <nav><ul>
-                                                <li><a href="/category/bo-ke.html">博客</a></li>
-                        </ul></nav>
-                </header><!-- /#banner -->
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
 
-                <aside id="featured" class="body">
-                    <article>
-                        <h1 class="entry-title"><a href="/day1-summary.html">Day 1：从不知道博客是什么，到拥有自己的网站</a></h1>
-<footer class="post-info">
-        <abbr class="published" title="2026-06-01T22:49:00+08:00">
-                Published: 周一 01 六月 2026
-        </abbr>
+<section id="content">
+  <article class="hentry">
+    <header><h1 class="entry-title">Tag: 个人网站</h1></header>
+    <ul>
+      <li><a href="https://zerotodev-4jq.pages.dev/day1-summary.html">Day 1：从不知道博客是什么，到拥有自己的网站</a></li>
+    </ul>
+  </article>
+</section>
 
-                <address class="vcard author">
-                        By                                 <a class="url fn" href="/author/zerotodev.html">ZeroToDev</a>
-                </address>
-        <p>In <a href="/category/bo-ke.html">博客</a>.</p>
-<p>tags: <a href="/tag/qi-bu.html">起步</a> <a href="/tag/ai.html">AI</a> <a href="/tag/gitee.html">Gitee</a> <a href="/tag/python.html">Python</a> <a href="/tag/ge-ren-wang-zhan.html">个人网站</a> </p>        
-</footer><!-- /.post-info --><h2>起因</h2>
-<p>说实话，今天之前我连"博客"是什么都不太清楚。就知道别人老说"写个博客"，心想那是个啥？</p>
-<p>最近 AI 火了，装了个 Claude 试了试，一用就上瘾了。然后又搞了 VS Code、OpenClaw、DeepSeek API、小米 API，前前后后花了几十块钱。还用 Python 做了一个 C 盘清理工具叫 <strong>CleanBuddy</strong>。</p>
-<p>做了东西总得有个地方放吧？于是就有了这个网站。</p>
-<h2>今天干了啥</h2>
-<h3>1. 装了 Pelican</h3>
-<p>Pelican 是一个用 Python 写的静态网站生成器。你只需要写 Markdown 文件，它帮你生成整个网站。对我这种小白太友好了。</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pelican<span class="w"> </span>markdown
-</code></pre></div>
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
 
-<p>一行命令搞定。</p>
-<h3>2. 选了名字</h3>
-<p>想了很久，最后选了 <strong>ZeroToDev</strong> —— 从零到开发者。因为这就是我的故事。</p>
-<h3>3. 写了第一篇博客</h3>
-<p>其实就是把我的经历写下来：怎么装的 Claude，怎么上瘾的，怎么做出来的 CleanBuddy。写 Markdown 比想象中简单多了。</p>
-<h3>4. 注册了 Gitee</h3>
-<p>本来想用 GitHub，结果网络不稳定连不上。改用 Gitee（码云），国内的，速度快，中文界面。</p>
-<h3>5. 上传了 CleanBuddy 源码</h3>
-<p>用 Git 把代码传到了 Gitee，第一次用 Git，踩了不少坑：
-- 跑错目录，差点把整个电脑的文件都传上去
-- 密码认证失败，改用 SSH 密钥
-- 仓库地址末尾多了个 <code>+</code> 号，死活传不上去</p>
-<p>但最后都解决了。</p>
-<h3>6. 网站部署</h3>
-<p>把网站代码也传到了 Gitee，准备用 Gitee Pages 部署上线。</p>
-<h2>花了多少钱</h2>
-<table>
-<thead>
-<tr>
-<th>项目</th>
-<th>花费</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>DeepSeek API</td>
-<td>几十块</td>
-</tr>
-<tr>
-<td>小米 API</td>
-<td>几十块</td>
-</tr>
-<tr>
-<td>Claude Code</td>
-<td>免费试用</td>
-</tr>
-<tr>
-<td>VS Code</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>OpenClaw</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>Gitee</td>
-<td>免费</td>
-</tr>
-<tr>
-<td>Pelican</td>
-<td>免费</td>
-</tr>
-</tbody>
-</table>
-<p>总花费：<strong>几十块</strong>。比一顿火锅便宜，但学到的东西比火锅多。</p>
-<h2>踩的坑</h2>
-<ol>
-<li><strong>Git 跑错目录</strong> — 在用户根目录初始化了仓库，差点把所有个人文件都传上去。教训：<code>cd</code> 到项目目录再操作！</li>
-<li><strong>Gitee 密码认证失败</strong> — 现在 Gitee 不让用密码推送代码了，要用 SSH 密钥或者私人令牌。</li>
-<li><strong>仓库地址多了个 <code>+</code> 号</strong> — 一个小符号导致 404 错误，排查了半天。</li>
-</ol>
-<h2>接下来的计划</h2>
-<ul>
-<li>完善 CleanBuddy 的功能</li>
-<li>做一个小游戏</li>
-<li>继续学 Python</li>
-<li>把网站设计得好看一点</li>
-</ul>
-<h2>感想</h2>
-<p>一天前我还不知道博客是什么，现在已经有了自己的网站、自己的代码仓库、自己的第一篇博客。</p>
-<p>技术这东西，真的不用等"准备好了"再开始。边做边学，遇到问题解决问题，这就是编程的乐趣。</p>
-<p><strong>ZeroToDev，Day 1 完成 ✅</strong></p>                    </article>
-                </aside><!-- /#featured -->
-                <section id="extras" class="body">
-                                <div class="blogroll">
-                                        <h2>links</h2>
-                                        <ul>
-                                                        <li><a href="https://getpelican.com/">Pelican</a></li>
-                                                        <li><a href="https://www.python.org/">Python.org</a></li>
-                                                        <li><a href="https://palletsprojects.com/p/jinja/">Jinja2</a></li>
-                                                        <li><a href="#">You can modify those links in your config file</a></li>
-                                        </ul>
-                                </div><!-- /.blogroll -->
-                                <div class="social">
-                                        <h2>social</h2>
-                                        <ul>
-
-                                                        <li><a href="#">You can add links in your config file</a></li>
-                                                        <li><a href="#">Another social link</a></li>
-                                        </ul>
-                                </div><!-- /.social -->
-                </section><!-- /#extras -->
-
-                <footer id="contentinfo" class="body">
-                        <address id="about" class="vcard body">
-                                Proudly powered by <a rel="nofollow" href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a rel="nofollow" href="https://www.python.org/">Python</a>.
-                        </address><!-- /#about -->
-
-                        <p>The theme is by <a rel="nofollow" href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
-                </footer><!-- /#contentinfo -->
-
-        </body>
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
 </html>

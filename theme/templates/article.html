@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title|striptags }} — {{ SITENAME }}{% endblock %}
+
+{% block content %}
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">{{ article.title }}</h1>
+    </header>
+    {% include 'article_infos.html' %}
+    <div class="entry-content">
+      {{ article.content }}
+    </div>
+    {% if article.tags %}
+      <footer>
+        <p>Tags: {% for tag in article.tags %}<a href="{{ SITEURL }}/{{ tag.url }}">{{ tag }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+      </footer>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

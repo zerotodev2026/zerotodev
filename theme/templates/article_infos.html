@@ -1,0 +1,16 @@
+<div class="post-info">
+  <time datetime="{{ article.date.isoformat() }}">
+    {{ article.locale_date }}
+  </time>
+  {% if article.category %}
+    <span> · </span>
+    <span>{{ article.category }}</span>
+  {% endif %}
+  {% if article.tags %}
+    <span class="tags">
+      {% for tag in article.tags %}
+        <a href="{{ SITEURL }}/{{ tag.url }}">{{ tag }}</a>
+      {% endfor %}
+    </span>
+  {% endif %}
+</div>

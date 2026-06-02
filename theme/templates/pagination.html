@@ -1,0 +1,8 @@
+<nav style="display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-lg);">
+  {% if articles_page.has_previous() %}
+    <a href="{{ SITEURL }}/{{ articles_previous_page.url }}">← Previous</a>
+  {% endif %}
+  {% if articles_page.has_next() %}
+    <a href="{{ SITEURL }}/{{ articles_next_page.url }}">Next →</a>
+  {% endif %}
+</nav>
