@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - 博客</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/bo-ke.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-03T22:45:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>部署个人网站：从 Pelican 到 Cloudflare Pages</title><link href="https://zerotodev-4jq.pages.dev/day3-deploy.html" rel="alternate"/><published>2026-06-03T22:45:00+08:00</published><updated>2026-06-03T22:45:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-03:/day3-deploy.html</id><summary type="html">&lt;p&gt;用 Pelican 搭建静态博客，部署到 Cloudflare Pages，实现一键构建发布。记录整个流程和踩坑经历。&lt;/p&gt;</summary><content type="html">&lt;p&gt;前两篇文章是在本地写的，网站一直只有我自己能看到。今天的目标很明确：&lt;strong&gt;让这个网站上线&lt;/strong&gt;。&lt;/p&gt;
+&lt;h2&gt;选型：为什么是 Pelican + Cloudflare Pages？&lt;/h2&gt;
+&lt;p&gt;之前试过不少方案：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Hexo / Next.js&lt;/strong&gt; — 需要 Node.js 环境，对我这个 Python 初学者不太友好&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;WordPress&lt;/strong&gt; — 太重了，还要维护数据库&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;GitHub Pages&lt;/strong&gt; — 访问速度在国内不太理想&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;最后选了 &lt;strong&gt;Pelican&lt;/strong&gt;（Python 静态站点生成器）+ &lt;strong&gt;Cloudflare Pages&lt;/strong&gt;（免费托管）。&lt;/p&gt;
+&lt;p&gt;Pelican 最大的好处是：&lt;strong&gt;用 Markdown 写文章，一个命令生成静态 HTML&lt;/strong&gt;。Python 生态对我这种刚入门的人也更友好。&lt;/p&gt;
+&lt;p&gt;Cloudflare Pages 的好处：
+- 免费额度很慷慨
+- 全球 CDN 加速
+- 支持自定义域名
+- 国内访问速度比 GitHub Pages 好&lt;/p&gt;
+&lt;h2&gt;主题设计&lt;/h2&gt;
+&lt;p&gt;既然是自己做，就不想用现成的模板。用了一晚上写了个自定义主题：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;简洁的卡片式设计&lt;/li&gt;
+&lt;li&gt;支持亮色/暗色模式（跟随系统）&lt;/li&gt;
+&lt;li&gt;响应式布局，手机也能看&lt;/li&gt;
+&lt;li&gt;紫色系 accent 配色&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;CSS 直接手写，没上框架，因为站点结构简单，犯不着为了一个博客引一堆依赖。&lt;/p&gt;
+&lt;h2&gt;部署踩坑记&lt;/h2&gt;
+&lt;h3&gt;第一步：修复配置&lt;/h3&gt;
+&lt;p&gt;第一次构建时发现 &lt;code&gt;publishconf.py&lt;/code&gt; 里的 &lt;code&gt;SITEURL&lt;/code&gt; 还是 &lt;code&gt;example.com&lt;/code&gt;，赶紧改成了实际域名。&lt;/p&gt;
+&lt;h3&gt;第二步：安装 wrangler&lt;/h3&gt;
+&lt;p&gt;用 Cloudflare Pages 需要 wrangler CLI 来上传文件：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;npm&lt;span class="w"&gt; &lt;/span&gt;install&lt;span class="w"&gt; &lt;/span&gt;-g&lt;span class="w"&gt; &lt;/span&gt;wrangler
+npx&lt;span class="w"&gt; &lt;/span&gt;wrangler&lt;span class="w"&gt; &lt;/span&gt;login
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;登录 Cloudflare 账号后，它会生成一个 OAuth Token，之后部署就不用重复登录了。&lt;/p&gt;
+&lt;h3&gt;第三步：一键部署脚本&lt;/h3&gt;
+&lt;p&gt;不想每次打字敲长长的命令，写了个 &lt;code&gt;deploy.sh&lt;/code&gt;：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# 先构建静态站点&lt;/span&gt;
+pelican&lt;span class="w"&gt; &lt;/span&gt;content&lt;span class="w"&gt; &lt;/span&gt;-o&lt;span class="w"&gt; &lt;/span&gt;output&lt;span class="w"&gt; &lt;/span&gt;-s&lt;span class="w"&gt; &lt;/span&gt;publishconf.py
+
+&lt;span class="c1"&gt;# 再上传到 Cloudflare Pages&lt;/span&gt;
+npx&lt;span class="w"&gt; &lt;/span&gt;wrangler&lt;span class="w"&gt; &lt;/span&gt;pages&lt;span class="w"&gt; &lt;/span&gt;deploy&lt;span class="w"&gt; &lt;/span&gt;output&lt;span class="w"&gt; &lt;/span&gt;--project-name&lt;span class="w"&gt; &lt;/span&gt;zerotodev&lt;span class="w"&gt; &lt;/span&gt;--branch&lt;span class="w"&gt; &lt;/span&gt;main
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;以后更新网站只需要：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;bash&lt;span class="w"&gt; &lt;/span&gt;deploy.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;第四步：自动部署的计划&lt;/h3&gt;
+&lt;p&gt;本来想搞 GitHub + Cloudflare Pages 自动同步——推送代码就自动构建部署。但国内连 GitHub 实在太慢了，连 CLI 都装不上。&lt;/p&gt;
+&lt;p&gt;退而求其次，目前在等 &lt;strong&gt;Gitee Pages&lt;/strong&gt; 的实名认证审核。通过后，连 &lt;code&gt;deploy.sh&lt;/code&gt; 都不用跑，&lt;code&gt;git push&lt;/code&gt; 完 Gitee 自动帮我构建部署。&lt;/p&gt;
+&lt;h2&gt;成果&lt;/h2&gt;
+&lt;p&gt;网站已上线：&lt;a href="https://zerotodev-4jq.pages.dev"&gt;https://zerotodev-4jq.pages.dev&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;从零搭建到部署完成，用了一晚上加一个傍晚。说麻烦也不算太麻烦，但踩的坑确实不少——网络问题、配置问题、工具链问题，一个一个解决过来。&lt;/p&gt;
+&lt;h2&gt;感想&lt;/h2&gt;
+&lt;p&gt;做这个网站本身就是一个学习过程：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;静态网站生成器&lt;/strong&gt; — 理解了 Markdown → HTML 的转换流程&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;CSS 主题设计&lt;/strong&gt; — 手写了一套还算能看的样式&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;云部署&lt;/strong&gt; — 接触了 CDN 和 CI/CD 的基本概念&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Git 工作流&lt;/strong&gt; — 日常使用 commit、push、pull&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;作为一个从零开始的人，每次搞定一个技术问题都挺有成就感的。虽然都是些基础操作，但能亲手把东西做出来放到网上让全世界看到，这感觉不错。&lt;/p&gt;
+&lt;p&gt;下一步计划：
+- 写更多文章记录学习过程
+- 完善网站样式和功能
+- 做点小工具放上来&lt;/p&gt;
+&lt;p&gt;继续加油 🚀&lt;/p&gt;</content><category term="博客"/><category term="Pelican"/><category term="Cloudflare"/><category term="部署"/><category term="静态网站"/></entry><entry><title>Day 2：折腾 Codex CLI、EchoBird 和一堆 API Key 的一天</title><link href="https://zerotodev-4jq.pages.dev/day2-codex-echobird.html" rel="alternate"/><published>2026-06-02T23:50:00+08:00</published><updated>2026-06-02T23:50:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-02:/day2-codex-echobird.html</id><summary type="html">&lt;p&gt;第二天的折腾记录——装 Codex CLI、下载 EchoBird、更新 DeepSeek Key、发现终端最大化闪退的元凶，以及一个重要的教训：不是所有 AI 工具都能接国产模型&lt;/p&gt;</summary><content type="html">&lt;h2&gt;前言&lt;/h2&gt;
+&lt;p&gt;Day 1 搭好了网站，Day 2 决定搞点硬核的——装 OpenAI 的 Codex CLI，再找个好用的 GUI 工具来管理 AI 模型。&lt;/p&gt;
+&lt;p&gt;结果一天下来，收获不少，坑也踩了不少。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;一、装 Codex CLI&lt;/h2&gt;
+&lt;h3&gt;什么是 Codex CLI&lt;/h3&gt;
+&lt;p&gt;Codex CLI 是 OpenAI 官方出的一个命令行 AI 编程助手，类似 Claude Code，但它是 OpenAI 家的。装了它就能在终端里跟 AI 对话、让它帮你写代码。&lt;/p&gt;
+&lt;h3&gt;安装过程&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;npm&lt;span class="w"&gt; &lt;/span&gt;install&lt;span class="w"&gt; &lt;/span&gt;-g&lt;span class="w"&gt; &lt;/span&gt;@openai/codex
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;一行命令，装上了 v0.136.0。过程很顺利，下载速度还行。&lt;/p&gt;
+&lt;h3&gt;⚠️ 问题来了：登录墙&lt;/h3&gt;
+&lt;p&gt;装完一跑 &lt;code&gt;codex doctor&lt;/code&gt;，傻眼了：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;✗ auth         stored credentials are incomplete
+✗ reachability one or more required provider endpoints are unreachable
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Codex 启动后弹出三个登录选项：
+1. &lt;strong&gt;Sign in with ChatGPT&lt;/strong&gt; — 需要 ChatGPT 账号
+2. &lt;strong&gt;Sign in with Azure&lt;/strong&gt; — 需要 Azure 账号
+3. &lt;strong&gt;Use API Key&lt;/strong&gt; — 需要 OpenAI API Key&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;三个都要花钱，三个在国内网络下都不好使。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;ChatGPT 和 OpenAI 的 API 端点（&lt;code&gt;chatgpt.com&lt;/code&gt;）在国内根本连不上，连 DNS 都解析不出来。&lt;/p&gt;
+&lt;h3&gt;尝试接入 DeepSeek&lt;/h3&gt;
+&lt;p&gt;不死心，试了用环境变量的方式接入 DeepSeek：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="no"&gt;[System.Environment]&lt;/span&gt;&lt;span class="p"&gt;::&lt;/span&gt;&lt;span class="n"&gt;SetEnvironmentVariable&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;OPENAI_API_KEY&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;你的DeepSeek Key&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;User&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="no"&gt;[System.Environment]&lt;/span&gt;&lt;span class="p"&gt;::&lt;/span&gt;&lt;span class="n"&gt;SetEnvironmentVariable&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;OPENAI_BASE_URL&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;https://api.deepseek.com/v1&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;User&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Codex 确实连上了 DeepSeek，显示 &lt;code&gt;model: deepseek-chat, provider: openai&lt;/code&gt;，看起来没问题。但等了半天没有回复，最后超时了。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;原因：&lt;/strong&gt; Codex 用的是 OpenAI 的 &lt;strong&gt;Responses API&lt;/strong&gt;，而 DeepSeek 支持的是 &lt;strong&gt;Chat Completions API&lt;/strong&gt;，接口格式不兼容。&lt;/p&gt;
+&lt;h3&gt;结论&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Codex CLI 目前无法直接使用国产模型（DeepSeek、GLM 等）。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;它的 &lt;code&gt;--oss&lt;/code&gt; 模式只支持本地的 Ollama 和 LMStudio，不支持在线 API 中转。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;最后决定暂时放弃 Codex，先把 Claude Code 用好。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;二、下载 EchoBird&lt;/h2&gt;
+&lt;h3&gt;什么是 EchoBird&lt;/h3&gt;
+&lt;p&gt;EchoBird 是一个桌面端的 AI Agent 管理工具，可以配置各种模型（包括国产模型），提供 GUI 界面来使用 Claude Code、Codex 等工具。简单说就是一个"AI 工具的控制面板"。&lt;/p&gt;
+&lt;h3&gt;下载过程&lt;/h3&gt;
+&lt;p&gt;GitHub 地址：&lt;code&gt;https://github.com/edison7009/EchoBird&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;下载 v5.1.5 Windows x64 安装包，8MB 左右。GitHub 下载速度一般，但还能接受。&lt;/p&gt;
+&lt;h3&gt;体验&lt;/h3&gt;
+&lt;p&gt;装好之后接入国产模型确实不错，DeepSeek、GLM 都能用。Claude Code 在小窗口里运行正常。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;三、⚠️ 重大发现：终端最大化闪退&lt;/h2&gt;
+&lt;h3&gt;现象&lt;/h3&gt;
+&lt;p&gt;EchoBird 里启动 Claude Code 时，会弹出一个黑色终端窗口（类似 cmd 的小窗口）。在小窗口状态下一切正常，但&lt;strong&gt;只要点最大化按钮，窗口就闪退&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;闪退之后对话丢失，找了半天不知道去哪恢复。&lt;/p&gt;
+&lt;h3&gt;排查过程&lt;/h3&gt;
+&lt;ol&gt;
+&lt;li&gt;先怀疑是 EchoBird 的 bug，去 GitHub Issues 搜了一圈，没找到相关报告&lt;/li&gt;
+&lt;li&gt;打开 Windows 事件查看器，发现了关键线索：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="err"&gt;事件名称&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;BEX64&lt;/span&gt;
+&lt;span class="n"&gt;P1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;conhost&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;exe&lt;/span&gt;
+&lt;span class="n"&gt;P8&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;c0000409&lt;/span&gt;&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="err"&gt;←&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;栈缓冲区溢出&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;崩溃的不是 EchoBird，是 &lt;code&gt;conhost.exe&lt;/code&gt;！&lt;/strong&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;code&gt;conhost.exe&lt;/code&gt; 是 Windows 的控制台主机进程，所有终端窗口（cmd、PowerShell、以及 EchoBird 里嵌入的终端）都靠它来渲染。&lt;/p&gt;
+&lt;h3&gt;根本原因&lt;/h3&gt;
+&lt;p&gt;我的 Windows 10 版本是 &lt;code&gt;10.0.19041&lt;/code&gt;（2004 版），这个版本的 &lt;code&gt;conhost.exe&lt;/code&gt; 有已知的窗口大小调整崩溃 bug。当终端窗口从小尺寸突然变为最大化时，触发了缓冲区溢出，直接崩掉。&lt;/p&gt;
+&lt;h3&gt;解决办法&lt;/h3&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;方案&lt;/th&gt;
+&lt;th&gt;操作&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;最佳&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;更新 Windows 10 到最新版本，微软已修复此 bug&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;临时&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;不用最大化按钮，用 &lt;code&gt;Win + ←/→&lt;/code&gt; 分屏，或拖拽窗口边框&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;进阶&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;安装 Windows Terminal 替代 conhost&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3&gt;恢复丢失的对话&lt;/h3&gt;
+&lt;p&gt;好消息是 Claude Code 的对话历史保存在本地：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;C:\Users\asus\.claude\projects\
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;恢复命令：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;claude&lt;span class="w"&gt; &lt;/span&gt;--resume&lt;span class="w"&gt;              &lt;/span&gt;&lt;span class="c1"&gt;# 选择恢复哪个对话&lt;/span&gt;
+claude&lt;span class="w"&gt; &lt;/span&gt;--resume&lt;span class="w"&gt; &lt;/span&gt;&amp;lt;session-id&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="c1"&gt;# 恢复指定对话&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;hr&gt;
+&lt;h2&gt;四、更新 DeepSeek API Key&lt;/h2&gt;
+&lt;h3&gt;问题&lt;/h3&gt;
+&lt;p&gt;之前的 DeepSeek API Key 过期了，Claude Code 连不上 DeepSeek。&lt;/p&gt;
+&lt;h3&gt;解决&lt;/h3&gt;
+&lt;p&gt;去 &lt;code&gt;https://platform.deepseek.com/api_keys&lt;/code&gt; 新建了一个 Key，然后更新了三个地方：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1. Hermes 配置文件&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# C:\Users\asus\.hermes\config.yaml&lt;/span&gt;
+&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;name&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;deepseek&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;api_key&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;sk-新Key&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;2. 系统环境变量&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="no"&gt;[System.Environment]&lt;/span&gt;&lt;span class="p"&gt;::&lt;/span&gt;&lt;span class="n"&gt;SetEnvironmentVariable&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;DEEPSEEK_API_KEY&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;新Key&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;User&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;3. VS Code Cline 插件&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Cline 的 API Key 存在 VS Code 的加密存储里，需要在插件设置界面手动更新。&lt;/p&gt;
+&lt;p&gt;⚠️ &lt;strong&gt;教训：换 Key 的时候要记得所有用到这个 Key 的地方都要改，不然就会出现"这边能用那边不能用"的诡异问题。&lt;/strong&gt;&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;五、今天踩的坑总结&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;#&lt;/th&gt;
+&lt;th&gt;问题&lt;/th&gt;
+&lt;th&gt;原因&lt;/th&gt;
+&lt;th&gt;解决&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;Codex 连不上&lt;/td&gt;
+&lt;td&gt;国内网络无法访问 chatgpt.com&lt;/td&gt;
+&lt;td&gt;暂时无解，等网络环境改善&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;Codex 接 DeepSeek 无响应&lt;/td&gt;
+&lt;td&gt;Responses API 和 Chat Completions API 不兼容&lt;/td&gt;
+&lt;td&gt;放弃 Codex，用 Claude Code&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;终端最大化闪退&lt;/td&gt;
+&lt;td&gt;conhost.exe 栈溢出（Win10 旧版本 bug）&lt;/td&gt;
+&lt;td&gt;更新系统或不点最大化&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;Claude Code 连不上 DeepSeek&lt;/td&gt;
+&lt;td&gt;API Key 过期&lt;/td&gt;
+&lt;td&gt;新建 Key，更新所有配置&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;换 Key 后 Cline 还是不能用&lt;/td&gt;
+&lt;td&gt;只改了部分配置，遗漏了 VS Code 插件&lt;/td&gt;
+&lt;td&gt;手动在插件设置里更新&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2&gt;六、花了多少钱&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;项目&lt;/th&gt;
+&lt;th&gt;花费&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;DeepSeek API&lt;/td&gt;
+&lt;td&gt;充值中（旧 Key 过期）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Codex CLI&lt;/td&gt;
+&lt;td&gt;免费（但用不了）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;EchoBird&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Claude Code&lt;/td&gt;
+&lt;td&gt;免费（接 DeepSeek 用）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;其他工具&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;今天的花费：&lt;strong&gt;基本为零&lt;/strong&gt;，主要花的是时间和耐心。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;七、接下来的计划&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;[ ] 测试 EchoBird + Codex 接国产模型的效果&lt;/li&gt;
+&lt;li&gt;[ ] 更新 Windows 系统，修复 conhost 闪退问题&lt;/li&gt;
+&lt;li&gt;[ ] 把博客自动部署到 Cloudflare Pages&lt;/li&gt;
+&lt;li&gt;[ ] 继续学 Python&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;感想&lt;/h2&gt;
+&lt;p&gt;今天最大的收获不是装了什么工具，而是学会了&lt;strong&gt;排查问题的方法&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;终端闪退的时候，第一反应是"EchoBird 有 bug"。但实际去事件查看器一查，发现是 Windows 系统的问题。&lt;strong&gt;不要凭感觉猜，要看日志。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;还有就是：&lt;strong&gt;换 API Key 的时候，一定要把所有用到的地方都找出来一起改。&lt;/strong&gt; 这个教训值一顿火锅。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;ZeroToDev，Day 2 完成 ✅&lt;/strong&gt;&lt;/p&gt;</content><category term="博客"/><category term="Codex"/><category term="EchoBird"/><category term="DeepSeek"/><category term="Claude Code"/><category term="API Key"/><category term="环境变量"/><category term="conhost"/></entry><entry><title>Day 1：从不知道博客是什么，到拥有自己的网站</title><link href="https://zerotodev-4jq.pages.dev/day1-summary.html" rel="alternate"/><published>2026-06-01T22:49:00+08:00</published><updated>2026-06-01T22:49:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-01:/day1-summary.html</id><summary type="html">&lt;p&gt;一个编程小白的第一天，从零开始搭建个人网站的完整记录&lt;/p&gt;</summary><content type="html">&lt;h2&gt;起因&lt;/h2&gt;
+&lt;p&gt;说实话，今天之前我连"博客"是什么都不太清楚。就知道别人老说"写个博客"，心想那是个啥？&lt;/p&gt;
+&lt;p&gt;最近 AI 火了，装了个 Claude 试了试，一用就上瘾了。然后又搞了 VS Code、OpenClaw、DeepSeek API、小米 API，前前后后花了几十块钱。还用 Python 做了一个 C 盘清理工具叫 &lt;strong&gt;CleanBuddy&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;做了东西总得有个地方放吧？于是就有了这个网站。&lt;/p&gt;
+&lt;h2&gt;今天干了啥&lt;/h2&gt;
+&lt;h3&gt;1. 装了 Pelican&lt;/h3&gt;
+&lt;p&gt;Pelican 是一个用 Python 写的静态网站生成器。你只需要写 Markdown 文件，它帮你生成整个网站。对我这种小白太友好了。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pip&lt;span class="w"&gt; &lt;/span&gt;install&lt;span class="w"&gt; &lt;/span&gt;pelican&lt;span class="w"&gt; &lt;/span&gt;markdown
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;一行命令搞定。&lt;/p&gt;
+&lt;h3&gt;2. 选了名字&lt;/h3&gt;
+&lt;p&gt;想了很久，最后选了 &lt;strong&gt;ZeroToDev&lt;/strong&gt; —— 从零到开发者。因为这就是我的故事。&lt;/p&gt;
+&lt;h3&gt;3. 写了第一篇博客&lt;/h3&gt;
+&lt;p&gt;其实就是把我的经历写下来：怎么装的 Claude，怎么上瘾的，怎么做出来的 CleanBuddy。写 Markdown 比想象中简单多了。&lt;/p&gt;
+&lt;h3&gt;4. 注册了 Gitee&lt;/h3&gt;
+&lt;p&gt;本来想用 GitHub，结果网络不稳定连不上。改用 Gitee（码云），国内的，速度快，中文界面。&lt;/p&gt;
+&lt;h3&gt;5. 上传了 CleanBuddy 源码&lt;/h3&gt;
+&lt;p&gt;用 Git 把代码传到了 Gitee，第一次用 Git，踩了不少坑：
+- 跑错目录，差点把整个电脑的文件都传上去
+- 密码认证失败，改用 SSH 密钥
+- 仓库地址末尾多了个 &lt;code&gt;+&lt;/code&gt; 号，死活传不上去&lt;/p&gt;
+&lt;p&gt;但最后都解决了。&lt;/p&gt;
+&lt;h3&gt;6. 网站部署&lt;/h3&gt;
+&lt;p&gt;把网站代码也传到了 Gitee，准备用 Gitee Pages 部署上线。&lt;/p&gt;
+&lt;h2&gt;花了多少钱&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;项目&lt;/th&gt;
+&lt;th&gt;花费&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;DeepSeek API&lt;/td&gt;
+&lt;td&gt;几十块&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;小米 API&lt;/td&gt;
+&lt;td&gt;几十块&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Claude Code&lt;/td&gt;
+&lt;td&gt;免费试用&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;VS Code&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;OpenClaw&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Gitee&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Pelican&lt;/td&gt;
+&lt;td&gt;免费&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;总花费：&lt;strong&gt;几十块&lt;/strong&gt;。比一顿火锅便宜，但学到的东西比火锅多。&lt;/p&gt;
+&lt;h2&gt;踩的坑&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;Git 跑错目录&lt;/strong&gt; — 在用户根目录初始化了仓库，差点把所有个人文件都传上去。教训：&lt;code&gt;cd&lt;/code&gt; 到项目目录再操作！&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Gitee 密码认证失败&lt;/strong&gt; — 现在 Gitee 不让用密码推送代码了，要用 SSH 密钥或者私人令牌。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;仓库地址多了个 &lt;code&gt;+&lt;/code&gt; 号&lt;/strong&gt; — 一个小符号导致 404 错误，排查了半天。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2&gt;接下来的计划&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;完善 CleanBuddy 的功能&lt;/li&gt;
+&lt;li&gt;做一个小游戏&lt;/li&gt;
+&lt;li&gt;继续学 Python&lt;/li&gt;
+&lt;li&gt;把网站设计得好看一点&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;感想&lt;/h2&gt;
+&lt;p&gt;一天前我还不知道博客是什么，现在已经有了自己的网站、自己的代码仓库、自己的第一篇博客。&lt;/p&gt;
+&lt;p&gt;技术这东西，真的不用等"准备好了"再开始。边做边学，遇到问题解决问题，这就是编程的乐趣。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;ZeroToDev，Day 1 完成 ✅&lt;/strong&gt;&lt;/p&gt;</content><category term="博客"/><category term="起步"/><category term="AI"/><category term="Gitee"/><category term="Python"/><category term="个人网站"/></entry><entry><title>从零开始：一个编程小白的折腾记录</title><link href="https://zerotodev-4jq.pages.dev/first-post.html" rel="alternate"/><published>2026-06-01T20:30:00+08:00</published><updated>2026-06-01T20:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-01:/first-post.html</id><summary type="html">&lt;p&gt;从装 Claude 到做出第一个程序，记录我从零开始的故事&lt;/p&gt;</summary><content type="html">&lt;p&gt;嗨，我是 ZeroToDev。&lt;/p&gt;
+&lt;h2&gt;起因&lt;/h2&gt;
+&lt;p&gt;最近 AI 很火，我装了个 Claude 试了试，没想到一用就上瘾了。&lt;/p&gt;
+&lt;p&gt;从一个完全不懂代码的小白，一路折腾到现在，我已经搞了不少东西：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Claude Code&lt;/strong&gt; — AI 编程助手，装了&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;VS Code&lt;/strong&gt; — 代码编辑器，装了&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;OpenClaw&lt;/strong&gt; — AI 助手平台，也装了&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;DeepSeek API&lt;/strong&gt; — 买了&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;小米 API&lt;/strong&gt; — 也买了&lt;/li&gt;
+&lt;li&gt;还用 Python 做了第一个程序 &lt;strong&gt;CleanBuddy&lt;/strong&gt;，已经打包好了&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;前前后后花了几十块钱，但比起学到的东西，太值了。&lt;/p&gt;
+&lt;h2&gt;为什么要做这个网站&lt;/h2&gt;
+&lt;p&gt;做出来的东西总得有个地方放吧？而且我也想记录下整个过程——从啥都不会，到能做出东西来。&lt;/p&gt;
+&lt;p&gt;这个网站就是我的实验基地：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;放我做的软件和小工具&lt;/li&gt;
+&lt;li&gt;记录学习过程中的坑和收获&lt;/li&gt;
+&lt;li&gt;看看一年后我能走到哪&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;接下来的计划&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;把 CleanBuddy 完善一下&lt;/li&gt;
+&lt;li&gt;做一个小游戏&lt;/li&gt;
+&lt;li&gt;继续学 Python 和 Web 开发&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;欢迎围观一个编程小白的逆袭之路 🚀&lt;/p&gt;</content><category term="博客"/><category term="起步"/><category term="AI"/><category term="Python"/></entry></feed>

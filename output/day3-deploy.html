@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>部署个人网站：从 Pelican 到 Cloudflare Pages — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+</head>
+
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
+
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">部署个人网站：从 Pelican 到 Cloudflare Pages</h1>
+    </header>
+<div class="post-info">
+  <time datetime="2026-06-03T22:45:00+08:00">
+    2026-06-03
+  </time>
+    <span> · </span>
+    <span>博客</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/pelican.html">Pelican</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/cloudflare.html">Cloudflare</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/bu-shu.html">部署</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/jing-tai-wang-zhan.html">静态网站</a>
+    </span>
+</div>    <div class="entry-content">
+      <p>前两篇文章是在本地写的，网站一直只有我自己能看到。今天的目标很明确：<strong>让这个网站上线</strong>。</p>
+<h2>选型：为什么是 Pelican + Cloudflare Pages？</h2>
+<p>之前试过不少方案：</p>
+<ul>
+<li><strong>Hexo / Next.js</strong> — 需要 Node.js 环境，对我这个 Python 初学者不太友好</li>
+<li><strong>WordPress</strong> — 太重了，还要维护数据库</li>
+<li><strong>GitHub Pages</strong> — 访问速度在国内不太理想</li>
+</ul>
+<p>最后选了 <strong>Pelican</strong>（Python 静态站点生成器）+ <strong>Cloudflare Pages</strong>（免费托管）。</p>
+<p>Pelican 最大的好处是：<strong>用 Markdown 写文章，一个命令生成静态 HTML</strong>。Python 生态对我这种刚入门的人也更友好。</p>
+<p>Cloudflare Pages 的好处：
+- 免费额度很慷慨
+- 全球 CDN 加速
+- 支持自定义域名
+- 国内访问速度比 GitHub Pages 好</p>
+<h2>主题设计</h2>
+<p>既然是自己做，就不想用现成的模板。用了一晚上写了个自定义主题：</p>
+<ul>
+<li>简洁的卡片式设计</li>
+<li>支持亮色/暗色模式（跟随系统）</li>
+<li>响应式布局，手机也能看</li>
+<li>紫色系 accent 配色</li>
+</ul>
+<p>CSS 直接手写，没上框架，因为站点结构简单，犯不着为了一个博客引一堆依赖。</p>
+<h2>部署踩坑记</h2>
+<h3>第一步：修复配置</h3>
+<p>第一次构建时发现 <code>publishconf.py</code> 里的 <code>SITEURL</code> 还是 <code>example.com</code>，赶紧改成了实际域名。</p>
+<h3>第二步：安装 wrangler</h3>
+<p>用 Cloudflare Pages 需要 wrangler CLI 来上传文件：</p>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>wrangler
+npx<span class="w"> </span>wrangler<span class="w"> </span>login
+</code></pre></div>
+
+<p>登录 Cloudflare 账号后，它会生成一个 OAuth Token，之后部署就不用重复登录了。</p>
+<h3>第三步：一键部署脚本</h3>
+<p>不想每次打字敲长长的命令，写了个 <code>deploy.sh</code>：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 先构建静态站点</span>
+pelican<span class="w"> </span>content<span class="w"> </span>-o<span class="w"> </span>output<span class="w"> </span>-s<span class="w"> </span>publishconf.py
+
+<span class="c1"># 再上传到 Cloudflare Pages</span>
+npx<span class="w"> </span>wrangler<span class="w"> </span>pages<span class="w"> </span>deploy<span class="w"> </span>output<span class="w"> </span>--project-name<span class="w"> </span>zerotodev<span class="w"> </span>--branch<span class="w"> </span>main
+</code></pre></div>
+
+<p>以后更新网站只需要：</p>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>deploy.sh
+</code></pre></div>
+
+<h3>第四步：自动部署的计划</h3>
+<p>本来想搞 GitHub + Cloudflare Pages 自动同步——推送代码就自动构建部署。但国内连 GitHub 实在太慢了，连 CLI 都装不上。</p>
+<p>退而求其次，目前在等 <strong>Gitee Pages</strong> 的实名认证审核。通过后，连 <code>deploy.sh</code> 都不用跑，<code>git push</code> 完 Gitee 自动帮我构建部署。</p>
+<h2>成果</h2>
+<p>网站已上线：<a href="https://zerotodev-4jq.pages.dev">https://zerotodev-4jq.pages.dev</a></p>
+<p>从零搭建到部署完成，用了一晚上加一个傍晚。说麻烦也不算太麻烦，但踩的坑确实不少——网络问题、配置问题、工具链问题，一个一个解决过来。</p>
+<h2>感想</h2>
+<p>做这个网站本身就是一个学习过程：</p>
+<ol>
+<li><strong>静态网站生成器</strong> — 理解了 Markdown → HTML 的转换流程</li>
+<li><strong>CSS 主题设计</strong> — 手写了一套还算能看的样式</li>
+<li><strong>云部署</strong> — 接触了 CDN 和 CI/CD 的基本概念</li>
+<li><strong>Git 工作流</strong> — 日常使用 commit、push、pull</li>
+</ol>
+<p>作为一个从零开始的人，每次搞定一个技术问题都挺有成就感的。虽然都是些基础操作，但能亲手把东西做出来放到网上让全世界看到，这感觉不错。</p>
+<p>下一步计划：
+- 写更多文章记录学习过程
+- 完善网站样式和功能
+- 做点小工具放上来</p>
+<p>继续加油 🚀</p>
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/pelican.html">Pelican</a>, <a href="https://zerotodev-4jq.pages.dev/tag/cloudflare.html">Cloudflare</a>, <a href="https://zerotodev-4jq.pages.dev/tag/bu-shu.html">部署</a>, <a href="https://zerotodev-4jq.pages.dev/tag/jing-tai-wang-zhan.html">静态网站</a></p>
+      </footer>
+  </article>
+</section>
+
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
+
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
+</html>
