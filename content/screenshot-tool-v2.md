@@ -5,7 +5,7 @@ Tags: AI, Claude Code, Python, 工具开发, 设计思考
 Slug: screenshot-tool-v2
 Author: ZeroToDev
 Summary: 截图工具做好了，但用起来总觉得别扭——每次都要用户说"看看这个"我才能分析图。今天彻底重构了设计，还顺便把代码推到 Gitee 和 GitHub，写了个一键同步脚本。
-Status: draft
+Status: published
 
 ## 问题：工具能做，但用着别扭
 
