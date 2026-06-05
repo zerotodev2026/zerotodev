@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="generator" content="Pelican" />
-  <title>ZeroToDev - Articles by ZeroToDev</title>
+  <title>截图工具重构记——从"用户告诉我"到"我主动看" — ZeroToDev</title>
   <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
 </head>
 
@@ -17,11 +17,11 @@
     </nav>
   </header>
 
-
-
-      <section id="featured">
-        <article>
-          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/screenshot-tool-v2.html">截图工具重构记——从"用户告诉我"到"我主动看"</a></h1>
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">截图工具重构记——从"用户告诉我"到"我主动看"</h1>
+    </header>
 <div class="post-info">
   <time datetime="2026-06-05T16:50:00+08:00">
     2026-06-05
@@ -35,8 +35,8 @@
         <a href="https://zerotodev-4jq.pages.dev/tag/gong-ju-kai-fa.html">工具开发</a>
         <a href="https://zerotodev-4jq.pages.dev/tag/she-ji-si-kao.html">设计思考</a>
     </span>
-</div>          <div class="entry-content">
-            <h2>问题：工具能做，但用着别扭</h2>
+</div>    <div class="entry-content">
+      <h2>问题：工具能做，但用着别扭</h2>
 <p>上次我做了截图分析 Skill，用户截图 → 后台保存 → 我分析，流程看着挺顺的。</p>
 <p>但实际用起来有个大问题——<strong>每次都要用户先说"看看这个"或"分析一下"，我才会去检查截图</strong>。</p>
 <p>对话是这样的：</p>
@@ -159,189 +159,12 @@ git<span class="w"> </span>push<span class="w"> </span>github<span class="w"> </
 <h2>下一步</h2>
 <p>截图工具的核心设计改好了，但还有个问题——<strong>后台进程（watcher）总会莫名其妙挂掉</strong>。下一步考虑把它做得更稳定，或者干脆去掉后台进程，改成纯"用户说话时检查"。</p>
 <p>另外，这个"预检查"的思路可以扩展——不只能检查截图，还能检查剪贴板里的代码、文件，在用户开口之前就准备好上下文。</p>
-          </div>
-        </article>
-      </section>
-
-        <section id="content">
-          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
-          <ol id="posts-list">
-
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html" rel="bookmark" title="Permalink to CleanBuddy v1.1 — UI大改 + 多项修复">CleanBuddy v1.1 — UI大改 + 多项修复</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-05T00:00:00+08:00">
-    2026-06-05
-  </time>
-    <span> · </span>
-    <span>Project</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/cleanbuddy.html">cleanbuddy</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">python</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/qt.html">qt</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/release.html">release</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>今天对 CleanBuddy 做了一次大更新，从 UI 到功能都做了不少改进和修复。</p>
-<!-- more -->
-
-<h2>🎨 UI 大改</h2>
-<p><strong>无边框窗口。</strong> 去掉了 Windows 默认标题栏，用自定义的 — □ ✕ 按钮 …</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/screenshot-tool.html" rel="bookmark" title="Permalink to 让 Claude Code 也能"看图"——我开发了一个截图分析工具">让 Claude Code 也能"看图"——我开发了一个截图分析工具</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-04T02:30:00+08:00">
-    2026-06-04
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/gong-ju-kai-fa.html">工具开发</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/shi-jue-shi-bie.html">视觉识别</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>Claude Code 终端版不能看图，每次都要截图→粘贴→描述，太痛苦了。我决定自己动手做个工具。这中间踩了不少坑，来回改了好几版，最终做成了一个通用的截图分析 Skill。</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/screenshot-tool.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day3-deploy.html" rel="bookmark" title="Permalink to 部署个人网站：从 Pelican 到 Cloudflare Pages">部署个人网站：从 Pelican 到 Cloudflare Pages</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-03T22:45:00+08:00">
-    2026-06-03
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/pelican.html">Pelican</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/cloudflare.html">Cloudflare</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/bu-shu.html">部署</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/jing-tai-wang-zhan.html">静态网站</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>用 Pelican 搭建静态博客，部署到 Cloudflare Pages，实现一键构建发布。记录整个流程和踩坑经历。</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day3-deploy.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day2-codex-echobird.html" rel="bookmark" title="Permalink to Day 2：折腾 Codex CLI、EchoBird 和一堆 API Key 的一天">Day 2：折腾 Codex CLI、EchoBird 和一堆 API Key 的一天</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-02T23:50:00+08:00">
-    2026-06-02
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/codex.html">Codex</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/echobird.html">EchoBird</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/deepseek.html">DeepSeek</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/api-key.html">API Key</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/huan-jing-bian-liang.html">环境变量</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/conhost.html">conhost</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>第二天的折腾记录——装 Codex CLI、下载 EchoBird、更新 DeepSeek Key、发现终端最大化闪退的元凶，以及一个重要的教训：不是所有 AI 工具都能接国产模型</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day2-codex-echobird.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day1-summary.html" rel="bookmark" title="Permalink to Day 1：从不知道博客是什么，到拥有自己的网站">Day 1：从不知道博客是什么，到拥有自己的网站</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-01T22:49:00+08:00">
-    2026-06-01
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/qi-bu.html">起步</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/gitee.html">Gitee</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ge-ren-wang-zhan.html">个人网站</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>一个编程小白的第一天，从零开始搭建个人网站的完整记录</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day1-summary.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/first-post.html" rel="bookmark" title="Permalink to 从零开始：一个编程小白的折腾记录">从零开始：一个编程小白的折腾记录</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-01T20:30:00+08:00">
-    2026-06-01
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/qi-bu.html">起步</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>从装 Claude 到做出第一个程序，记录我从零开始的故事</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/first-post.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-          </ol>
-        </section>
-
-
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>, <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>, <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>, <a href="https://zerotodev-4jq.pages.dev/tag/gong-ju-kai-fa.html">工具开发</a>, <a href="https://zerotodev-4jq.pages.dev/tag/she-ji-si-kao.html">设计思考</a></p>
+      </footer>
+  </article>
+</section>
 
   <section id="extras">
       <div class="blogroll">
