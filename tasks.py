@@ -6,7 +6,7 @@ import datetime
 
 from invoke import task
 from invoke.main import program
-from invoke.util import cd
+
 from pelican import main as pelican_main
 from pelican.server import ComplexHTTPRequestHandler, RootedHTTPServer
 from pelican.settings import DEFAULT_CONFIG, get_settings_from_file
@@ -23,10 +23,6 @@ CONFIG = {
     "settings_publish": "publishconf.py",
     # Output path. Can be absolute or relative to tasks.py. Default: 'output'
     "deploy_path": SETTINGS["OUTPUT_PATH"],
-    # Rackspace Cloud Files configuration settings
-    "cloudfiles_username": "my_rackspace_username",
-    "cloudfiles_api_key": "my_rackspace_api_key",
-    "cloudfiles_container": "my_cloudfiles_container",
     # Github Pages configuration
     "github_pages_branch": "main",
     "commit_message": f"'Publish site on {datetime.date.today().isoformat()}'",
@@ -134,30 +130,6 @@ def livereload(c):
         webbrowser.open("http://{host}:{port}".format(**CONFIG))
 
     server.serve(host=CONFIG["host"], port=CONFIG["port"], root=CONFIG["deploy_path"])
-
-@task
-def cf_upload(c):
-    """Publish to Rackspace Cloud Files"""
-    rebuild(c)
-    with cd(CONFIG["deploy_path"]):
-        c.run(
-            "swift -v -A https://auth.api.rackspacecloud.com/v1.0 "
-            "-U {cloudfiles_username} "
-            "-K {cloudfiles_api_key} "
-            "upload -c {cloudfiles_container} .".format(**CONFIG)
-        )
-
-@task
-def publish(c):
-    """Publish to production via rsync"""
-    pelican_run("-s {settings_publish}".format(**CONFIG))
-    c.run(
-        'rsync --delete --exclude ".DS_Store" -pthrvz -c '
-        '-e "ssh -p {ssh_port}" '
-        "{} {ssh_user}@{ssh_host}:{ssh_path}".format(
-            CONFIG["deploy_path"].rstrip("/") + "/", **CONFIG
-        )
-    )
 
 @task
 def gh_pages(c):

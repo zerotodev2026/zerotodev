@@ -1,5 +1,5 @@
 Title: CleanBuddy v1.1 — UI大改 + 多项修复
-Date: 2026-06-05
+Date: 2026-06-05 23:00
 Category: Project
 Tags: cleanbuddy, python, qt, release
 

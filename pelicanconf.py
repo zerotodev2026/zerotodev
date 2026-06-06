@@ -36,5 +36,12 @@ DISPLAY_CATEGORIES_ON_MENU = False
 
 DEFAULT_PAGINATION = 10
 
-# Uncomment following line if you want document-relative URLs when developing
-# RELATIVE_URLS = True
+# Use relative URLs for local development
+RELATIVE_URLS = True
+
+# Static files configuration
+STATIC_PATHS = ['images', 'static', 'extra']
+EXTRA_PATH_METADATA = {
+    'extra/robots.txt': {'path': 'robots.txt'},
+    'extra/favicon.ico': {'path': 'favicon.ico'},
+}
