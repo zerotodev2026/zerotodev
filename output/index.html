@@ -22,7 +22,250 @@
 
       <section id="featured">
         <article>
-          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html">CleanBuddy v1.1 — UI大改 + 多项修复</a></h1>
+          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/write-review-feature.html">给 Claude Code 装上「写审分离」：一个写代码一个审，审的不改只挑毛病</a></h1>
+<div class="post-info">
+  <time datetime="2026-06-19T23:30:00+08:00">
+    2026-06-19
+  </time>
+    <span> · </span>
+    <span>博客</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/aibian-cheng.html">AI编程</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/dai-ma-shen-cha.html">代码审查</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/zi-dong-hua.html">自动化</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/ecc.html">ECC</a>
+    </span>
+</div>          <div class="entry-content">
+            <p>用 Claude Code 写代码有个问题：写完就完了，没人帮你审。</p>
+<p>我之前也用过 <code>/code-review</code> 命令，但那是手动的——你得记得调，调完还得自己看报告、自己改。有时候写着写着就忘了审，有时候一个小改动也去审，白白浪费 token。</p>
+<h2>我想要的效果</h2>
+<p>很简单，就三句话：</p>
+<ol>
+<li><strong>一个写，一个审</strong> — 各干各的，不串台</li>
+<li><strong>审的不改代码</strong> — 审手只挑毛病，把问题列出来发给写手</li>
+<li><strong>自动判断</strong> — 我不知道啥时候该审，系统自己决定</li>
+</ol>
+<h2>做出来的东西</h2>
+<p>在 Claude Code 的 ECC 框架里做了一个 skill，叫 <code>write-review</code>。</p>
+<h3>角色分离</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Writer（写手）</th>
+<th>Reviewer（审手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>读代码</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>写代码</td>
+<td>✅</td>
+<td>❌ 绝不允许</td>
+</tr>
+<tr>
+<td>分析问题</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>改代码</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>提出修改建议</td>
+<td>—</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<p>审手用的是 Claude Code 自带的 <code>code-reviewer</code> agent。这个 agent 本身就只有 Read、Grep、Glob、Bash 四个只读工具，天然就不能改代码。我要做的就是给它加个 prompt 约束，让它明白自己是 Reviewer 不是修理工。</p>
+<h3>工作流程</h3>
+<div class="highlight"><pre><span></span><code>你的任务 → Phase 0: 自动判断要不要审
+                ↓
+          Phase 1: 理解需求
+                ↓
+          Phase 2: Writer 写代码
+                ↓
+          Phase 3: Reviewer 审代码（只读不改！）
+                ↓
+          Phase 4: 有严重问题？→ 反馈给 Writer → 回到 Phase 2
+                   没问题？→ 通过！
+                ↓
+          Phase 5: 汇报结果
+</code></pre></div>
+
+<p>最多循环 3 轮。3 轮还过不了就停下来让你手动处理。</p>
+<h3>自动判断——解决"不知道啥时候该审"</h3>
+<p>这是最实用的部分。我在 Phase 0 放了一个决策矩阵：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>🔴 走审</th>
+<th>🟢 跳过</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>规模</td>
+<td>新文件 / 多文件 / &gt;20行</td>
+<td>单行修改 / 单变量改名</td>
+</tr>
+<tr>
+<td>安全</td>
+<td>auth / 支付 / 用户数据</td>
+<td>无安全相关</td>
+</tr>
+<tr>
+<td>数据</td>
+<td>schema 变更 / 新查询</td>
+<td>没动数据库</td>
+</tr>
+<tr>
+<td>API</td>
+<td>新增接口 / 改签名</td>
+<td>内部调整</td>
+</tr>
+<tr>
+<td>业务</td>
+<td>核心逻辑 / 计算</td>
+<td>纯格式 / 注释</td>
+</tr>
+<tr>
+<td>重构</td>
+<td>行为有变化</td>
+<td>纯重命名</td>
+</tr>
+</tbody>
+</table>
+<p><strong>不确定时默认走审。</strong> 宁可多审一次，不要漏过问题。</p>
+<p>实际效果：</p>
+<ul>
+<li>你说"改个变量名" → 矩阵全部命中 🟢 → 直接改，300 token</li>
+<li>你说"写个登录接口" → 命中 🔴（新文件+auth+API）→ 自动走写审循环</li>
+<li>你说"加个注释" → 🟢 跳过</li>
+<li>你说"重构支付模块" → 🔴（多文件+安全+行为变化）→ 走审</li>
+</ul>
+<h3>Token 消耗</h3>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>不审</th>
+<th>自动审</th>
+<th>多花的</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>修改变量名</td>
+<td>300</td>
+<td>300（跳过）</td>
+<td>0</td>
+</tr>
+<tr>
+<td>新增工具函数</td>
+<td>3K</td>
+<td>8K</td>
+<td>+5K 但值得</td>
+</tr>
+<tr>
+<td>多文件功能</td>
+<td>8K</td>
+<td>26K（2轮）</td>
+<td>+18K 但值得</td>
+</tr>
+<tr>
+<td>安全相关</td>
+<td>5K</td>
+<td>20K（审+安全审）</td>
+<td>+15K 但必要</td>
+</tr>
+</tbody>
+</table>
+<p><strong>小改动不浪费，大改动不放过。</strong></p>
+<h2>怎么用</h2>
+<p>以后不用手动调命令了。平时正常说话写代码，系统会在后台自动判断。你觉得重要的东西它自动就审了，鸡毛蒜皮的直接跳过。</p>
+<p>想强制审查的时候，也可以手动调用：</p>
+<div class="highlight"><pre><span></span><code>/write-review 写一个支付回调处理接口
+</code></pre></div>
+
+<h2>测试了一下</h2>
+<p>创建了一个简单的 <code>demo-math-utils.js</code>，包含 <code>add</code> 和 <code>multiply</code> 两个函数。系统走了完整流程：</p>
+<ul>
+<li>Phase 0 判断：新文件 → 🔴 走审</li>
+<li>Phase 2：写代码（24行，含 JSDoc）</li>
+<li>Phase 3：code-reviewer 审代码</li>
+<li>Phase 4：0 CRITICAL、0 HIGH → 通过</li>
+</ul>
+<p>1 轮过审，review 报告保存在 <code>.claude/reviews/</code> 目录下。</p>
+<h2>踩的坑</h2>
+<ol>
+<li><strong>deepseek-v4-pro 安全分类器经常挂</strong> — 写文件的时候 Edit 被拦截了好几次，最后用 Write 整个覆写绕过了</li>
+<li><strong>skill 文件太长</strong> — 274 行的 SKILL.md，Edit 工具匹配 old_string 时如果不够精确就失败</li>
+<li><strong>Phase 0 的设计改了三次</strong> — 最开始想放在 CLAUDE.md 里，后来觉得太分散；想用 hook，又太重。最后放在 skill 的 Phase 0，既集中又不干扰其他流程</li>
+</ol>
+<h2>下一步想法</h2>
+<ul>
+<li>把审手从 code-reviewer 扩展到 security-reviewer，安全相关代码自动双审</li>
+<li>支持"审手意见分歧"——Writer 觉得审手说得不对的时候，可以反驳</li>
+<li>加个统计面板，看过去审了多少次、拦截了多少问题</li>
+</ul>
+<hr>
+<p>写代码有人审，跟没人审，出来的东西真的不一样。现在我的 Claude Code 会自己帮我盯着了 😎</p>
+          </div>
+        </article>
+      </section>
+
+        <section id="content">
+          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
+          <ol id="posts-list">
+
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day4-workflow-review.html" rel="bookmark" title="Permalink to 学会用 Workflow 后，我给我的博客来了次"全身体检"">学会用 Workflow 后，我给我的博客来了次"全身体检"</a></h1>
+          </header>
+<div class="post-info">
+  <time datetime="2026-06-06T21:00:00+08:00">
+    2026-06-06
+  </time>
+    <span> · </span>
+    <span>博客</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/workflow.html">Workflow</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/zhong-gou.html">重构</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/dai-ma-shen-cha.html">代码审查</a>
+    </span>
+</div>          <div class="entry-content">
+            <p>用 Claude Code 这么久，我一直是一个问题一个问题地问，就像一个个排队办事。</p>
+<p>今天试了试它的 <strong>Workflow</strong> 功能——一次性派出去 28 个"小助手 …</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day4-workflow-review.html">Read more →</a>
+          </div>
+        </article>
+      </li>
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html" rel="bookmark" title="Permalink to CleanBuddy v1.1 — UI大改 + 多项修复">CleanBuddy v1.1 — UI大改 + 多项修复</a></h1>
+          </header>
 <div class="post-info">
   <time datetime="2026-06-05T23:00:00+08:00">
     2026-06-05
@@ -40,27 +283,11 @@
 <!-- more -->
 
 <h2>🎨 UI 大改</h2>
-<p><strong>无边框窗口。</strong> 去掉了 Windows 默认标题栏，用自定义的 — □ ✕ 按钮放在右上角。窗口四边可以拖拽调整大小，顶部可以拖动和双击最大化，和系统原生窗口一样好用。</p>
-<p><strong>左右分栏布局。</strong> 扫描结果和迁移页都改成左右分栏了。以前分析和说明都挤在底部一小块地方，现在放在右侧，内容再多也不怕。</p>
-<p><strong>暗色弹窗统一。</strong> 之前迁移和清理的提示弹窗都是 Windows 默认的白底，和暗色主题格格不入。现在全部改成深色自定义弹窗，文字还能选中复制。</p>
-<h2>🐛 Bug 修复</h2>
-<p><strong>临时文件重复扫描。</strong> Windows 上 <code>%TEMP%</code>、<code>%TMP%</code>、<code>AppData\Local\Temp</code> 指向同一个目录，之前会被扫出 3 条一模一样的项。用路径归一化去重后只显示 1 条。</p>
-<p><strong>迁移页分类丢失。</strong> 扫描结果导入迁移页时所有项都被硬编码成"用户数据"分类，导致临时文件、浏览器缓存混在一起。现在保留原始分类。</p>
-<p><strong>清理虚报。</strong> 之前不管文件有没有删掉都算"清理成功"。现在会实际检测释放了多少空间，没删掉的不算数。</p>
-<p><strong>只读文件处理。</strong> 清理时先去掉只读属性，遇到被占用的文件标记为重启时删除。</p>
-<h2>🗑️ 功能调整</h2>
-<p>桌面、文档、下载文件夹从迁移列表中移除。这些目录迁移风险太高，出问题整个桌面都打不开，不值得冒这个险。临时文件、系统日志也一样——它们应该被清理而不是被迁移。</p>
-<h2>下载与源码</h2>
-<p>下载地址：<a href="https://github.com/zerotodev2026/cleanbuddy/releases/tag/v1.1">GitHub Releases</a>
-源码仓库：<a href="https://github.com/zerotodev2026/cleanbuddy">zerotodev2026/cleanbuddy</a></p>
+<p><strong>无边框窗口。</strong> 去掉了 Windows 默认标题栏，用自定义的 — □ ✕ 按钮 …</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html">Read more →</a>
           </div>
         </article>
-      </section>
-
-        <section id="content">
-          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
-          <ol id="posts-list">
-
+      </li>
 
 
 

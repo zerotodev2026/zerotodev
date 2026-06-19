@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>学会用 Workflow 后，我给我的博客来了次"全身体检" — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+    <link href="https://zerotodev-4jq.pages.dev/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="ZeroToDev Atom Feed" />
+</head>
+
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
+
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">学会用 Workflow 后，我给我的博客来了次"全身体检"</h1>
+    </header>
+<div class="post-info">
+  <time datetime="2026-06-06T21:00:00+08:00">
+    2026-06-06
+  </time>
+    <span> · </span>
+    <span>博客</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/workflow.html">Workflow</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/zhong-gou.html">重构</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/dai-ma-shen-cha.html">代码审查</a>
+    </span>
+</div>    <div class="entry-content">
+      <p>用 Claude Code 这么久，我一直是一个问题一个问题地问，就像一个个排队办事。</p>
+<p>今天试了试它的 <strong>Workflow</strong> 功能——一次性派出去 28 个"小助手"同时干活。7 分钟跑完，翻出 21 个真实问题。</p>
+<p>挑几个值得说的。</p>
+<!-- more -->
+
+<h2>一个配置，让本地预览断链了</h2>
+<p><code>pelicanconf.py</code> 里有一行被注释掉的配置：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># RELATIVE_URLS = True</span>
+</code></pre></div>
+
+<p>啥意思呢？Pelican 默认生成的是绝对路径链接（比如 <code>https://zerotodev-4jq.pages.dev/post1.html</code>）。这在线上没问题，但在本地直接打开 HTML 文件时，所有链接都指向线上地址，本地根本预览不了。</p>
+<p>我之前一直纳闷为什么本地打开 <code>index.html</code> 全是断链——原来这行注释一直没取消。</p>
+<h2>三个废弃的部署方式</h2>
+<p>项目是 Pelican 脚手架生成的，自带了一堆部署模板：</p>
+<ul>
+<li><strong>s3_upload</strong> — 亚马逊 S3 部署</li>
+<li><strong>cf_upload</strong> — Rackspace Cloud Files 部署</li>
+<li><strong>publish</strong> — rsync SSH 部署</li>
+</ul>
+<p>这三个我压根没用过，变量全是占位符（<code>my_s3_bucket</code>、<code>my_rackspace_username</code> 之类）。而且 rsync 那个还引用了没定义的变量，如果误运行会直接崩。</p>
+<p>我实际用的是 Cloudflare Pages（<code>deploy.sh</code>），这些留着纯属占地方，删掉。</p>
+<h2>关于 Workflow 的效率</h2>
+<p>28 个子代理，7 分钟，150 万 token，费用大概 $7-8。</p>
+<p>单个问的话对话要往返 28 次，时间上至少翻倍。而且 Workflow 有个<strong>交叉验证</strong>环节——每个问题由第二个代理独立验证真伪，这次 24 个发现里有 3 个是误报，直接过滤掉了，人工审根本不会这么细。</p>
+<p>当然不是每次都要开。结论是：</p>
+<blockquote>
+<p><strong>平常单聊，打包前开 Workflow 扫一遍。</strong></p>
+</blockquote>
+<h2>改动清单</h2>
+<p>这次一共改了 3 个文件：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>改动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pelicanconf.py</code></td>
+<td>启用 <code>RELATIVE_URLS</code>，新增 <code>STATIC_PATHS</code></td>
+</tr>
+<tr>
+<td><code>Makefile</code></td>
+<td>删除 S3/CloudFiles 废弃部署目标</td>
+</tr>
+<tr>
+<td><code>tasks.py</code></td>
+<td>删除 CloudFiles 和 rsync 废弃任务</td>
+</tr>
+</tbody>
+</table>
+<h2>代码</h2>
+<p>所有改动已推送到 <a href="https://github.com/zerotodev2026/zerotodev">GitHub</a> 和 <a href="https://gitee.com/from-scratch-to-development/zerotodev">Gitee</a>，网站也重新部署了。</p>
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>, <a href="https://zerotodev-4jq.pages.dev/tag/claude-code.html">Claude Code</a>, <a href="https://zerotodev-4jq.pages.dev/tag/workflow.html">Workflow</a>, <a href="https://zerotodev-4jq.pages.dev/tag/zhong-gou.html">重构</a>, <a href="https://zerotodev-4jq.pages.dev/tag/dai-ma-shen-cha.html">代码审查</a></p>
+      </footer>
+  </article>
+</section>
+
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
+
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
+</html>
