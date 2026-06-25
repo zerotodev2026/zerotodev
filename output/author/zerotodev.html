@@ -22,7 +22,265 @@
 
       <section id="featured">
         <article>
-          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/write-review-feature.html">给 Claude Code 装上「写审分离」：一个写代码一个审，审的不改只挑毛病</a></h1>
+          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/major-query-rebuild.html">微信小程序「专业查询」重构全记录</a></h1>
+<div class="post-info">
+  <time datetime="2026-06-25T20:30:00+08:00">
+    2026-06-25
+  </time>
+    <span> · </span>
+    <span>Project</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/cai-keng.html">踩坑</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/le-dao-zhi-yuan-zhu-li.html">乐道志愿助理</a>
+    </span>
+</div>          <div class="entry-content">
+            <h1>微信小程序「专业查询」功能重构全记录</h1>
+<blockquote>
+<p>从一次搜索到完整展开交互，从 500 条数据截断到 180 万全量索引——乐道志愿助理专业查询模块的蜕变过程。</p>
+</blockquote>
+<hr>
+<h2>一、起点：一个简单的搜索框</h2>
+<p>改版前的专业查询页只有基本功能：输入专业名 → 搜到院校列表 → 展开看该院校匹配的几个专业和分数范围。交互到此为止。</p>
+<p>问题很明显：
+- <strong>看不到三年完整数据</strong> — 只能看分数范围
+- <strong>看不到院校其他专业</strong> — 只显示搜到的那个
+- <strong>看不到专业详情</strong> — 没有概述、就业方向
+- <strong>没有导航出口</strong> — 搜完就困住了</p>
+<hr>
+<h2>二、新设计：一站式院校卡片</h2>
+<p>目标：用户搜一个专业 → 看到招生院校 → 点开展示全部。</p>
+<div class="highlight"><pre><span></span><code>搜索&quot;法学&quot;
+  → 院校卡片列表（重庆地区招生院校 × 200+）
+  → 展开&quot;西南政法大学&quot;：
+    ├─ 🏫 院校简介（可折叠）
+    ├─ ⭐ 法学 ← 搜索专业排第一，高亮
+    │   ├─ 2023: 559分 | 2024: 587分 | 2025: 582分
+    │   └─ [专业详情 ▸] 概述 / 男女比例 / 就业方向
+    ├─ 知识产权
+    │   ├─ 三年分数
+    │   └─ [专业详情 ▸]
+    └─ 刑事科学技术 ...
+</code></pre></div>
+
+<p>关键技术决策：<strong>展开时懒加载</strong>，不预取全部数据。点院校才调云函数拉取数据，同一次搜索内缓存。</p>
+<hr>
+<h2>三、踩坑：西南政法大学怎么搜不到？</h2>
+<p>用户选了重庆生源地，搜"法学"，西南政法大学竟然不在结果里。这是西南政法啊——中国法学的招牌院校。</p>
+<h3>排查过程</h3>
+<p><strong>第一层：年份过滤。</strong> 前端去掉了年份选择器，<code>queryMajors</code> 默认只查 2025 年。但西南政法每年都有法学——不是这个问题。</p>
+<p><strong>第二层：省份匹配。</strong> 数据里的省份是"重庆市"（带市），用户选的是"重庆"（不带市）。云函数做的是 <code>===</code> 严格比较。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// ❌ 旧代码</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">entry</span><span class="p">.</span><span class="nx">p</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="nx">province</span><span class="p">.</span><span class="nx">trim</span><span class="p">())</span><span class="w"> </span><span class="k">continue</span>
+
+<span class="c1">// ✅ 修复后</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">qProv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">province</span><span class="p">.</span><span class="nx">trim</span><span class="p">().</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/市$/</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">eProv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">entry</span><span class="p">.</span><span class="nx">p</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/市$/</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">qProv</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="nx">eProv</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span>
+</code></pre></div>
+
+<p>修完后多了 4 所学校，但西南政法还是没出现。</p>
+<p><strong>第三层：数据截断。</strong> 查原始 admission 数据，西南政法 + 法学 + 重庆的记录确实存在（559 分）。但 <code>build_major_index.py</code> 里有一行：</p>
+<div class="highlight"><pre><span></span><code><span class="n">MAX_PER_MAJOR</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># 每个专业只保留前 500 条</span>
+</code></pre></div>
+
+<p>"法学"是全国最热门的专业之一，全国数百所法学院校 × 30 省份 × 3 年 = 数千条记录。559 分排不进前 500，被直接截掉了。</p>
+<p><strong>修复：直接取消截断限制。</strong> 180 万条记录全部保留。</p>
+<hr>
+<h2>四、踩坑：60 秒超时</h2>
+<p>索引从 48 个 chunk 暴涨到 151 个，原来一次性灌入的方案在 60 秒内跑不完。</p>
+<p><strong>修复：链式分批。</strong> 每次只处理 15 个 chunk，完成后 fire-and-forget 调用下一步。151 个文件分 11 步自动串行跑完。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// 每步结尾</span>
+<span class="nx">cloud</span><span class="p">.</span><span class="nx">callFunction</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;seedMajorIndex&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">step</span><span class="o">:</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}).</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;链式调用失败:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">))</span>
+</code></pre></div>
+
+<hr>
+<h2>五、200+ 所学校怎么办？</h2>
+<p>法学搜出 200+ 所学校，用户需要快速定位。加了两个筛选：</p>
+<ul>
+<li><strong>院校名称搜索</strong>：客户端即时过滤，输入"西南"马上只显示相关学校</li>
+<li><strong>院校所在省份</strong>：选"重庆"只显示重庆的大学，云函数端过滤</li>
+</ul>
+<p>后者在 <code>queryMajors</code> 里先查 <code>universities</code> 拿到该省全部院校名，再与专业索引结果取交集。</p>
+<hr>
+<h2>六、其他细节改进</h2>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>解决</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>展开院校后滚动位置不对</td>
+<td><code>_scrollToExpandedCard()</code> 自动滚到卡片顶部</td>
+</tr>
+<tr>
+<td>返回直接退出页面</td>
+<td><code>onBackPress</code> 拦截，展开时先折叠再退出</td>
+</tr>
+<tr>
+<td>页面销毁后仍在处理数据</td>
+<td><code>_aborted</code> 标记 + 所有异步回调检查</td>
+</tr>
+<tr>
+<td><code>--</code> 无说明</td>
+<td>竖排注释"表示该校当年未开设此专业"</td>
+</tr>
+<tr>
+<td>在校人数缺少前缀</td>
+<td>补上"在校生 X 人"</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>七、最终架构</h2>
+<div class="highlight"><pre><span></span><code>pages/major/major.js ───── 搜索入口
+  ├─ queryMajors (云函数) ── major_index 倒排索引
+  │   ├─ RegExp 匹配专业名
+  │   ├─ 省份/年份/科类/院校省份 过滤
+  │   └─ 返回按学校分组的结果
+  │
+  └─ 展开院校:
+      ├─ getSchoolAllMajors (云函数)
+      │   ├─ universities → 院校简介
+      │   ├─ admission → 全部专业 + 三年分数
+      │   └─ major_details → 专业百科
+      │
+      └─ 懒加载专业详情:
+          └─ getMajorDetails (已有云函数)
+</code></pre></div>
+
+<hr>
+<h2>八、改动的文件清单</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>改动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/build_major_index.py</code></td>
+<td>取消 500 条截断</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/seedMajorIndex/index.js</code></td>
+<td>链式分批灌入</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/queryMajors/index.js</code></td>
+<td>省份兼容 + year:all + 院校省份筛选</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/getSchoolAllMajors/*</code></td>
+<td><strong>新建</strong>，展开院校数据</td>
+</tr>
+<tr>
+<td><code>pages/major/major.js</code></td>
+<td>展开逻辑 + 返回拦截 + 院校筛选 + 退出清理</td>
+</tr>
+<tr>
+<td><code>pages/major/major.wxml</code></td>
+<td>新展开视图 + 院校筛选栏</td>
+</tr>
+<tr>
+<td><code>pages/major/major.wxss</code></td>
+<td>展开视图全套样式</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>九、部署清单</h2>
+<ol>
+<li>部署 <code>seedMajorIndex</code>（已跑完，数据已在库）</li>
+<li>部署 <code>queryMajors</code></li>
+<li>部署 <code>getSchoolAllMajors</code>（首次）</li>
+</ol>
+<p>三个云函数部署完即可上线。</p>
+<hr>
+<blockquote>
+<p>2026-06-25 · 乐道志愿助理 · Claude Code</p>
+</blockquote>
+          </div>
+        </article>
+      </section>
+
+        <section id="content">
+          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
+          <ol id="posts-list">
+
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.html" rel="bookmark" title="Permalink to 我花了两天，把高考志愿小程序做成了「专业版」—— 搜专业、看就业、查薪酬全有了">我花了两天，把高考志愿小程序做成了「专业版」—— 搜专业、看就业、查薪酬全有了</a></h1>
+          </header>
+<div class="post-info">
+  <time datetime="2026-06-22T23:30:00+08:00">
+    2026-06-22
+  </time>
+    <span> · </span>
+    <span>项目</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/shu-ju.html">数据</a>
+    </span>
+</div>          <div class="entry-content">
+            <p>从零搭建的高考志愿填报助手迎来大更新：专业搜索倒排索引、阳光高考官方专业目录、Dashboard 首页，2988 所院校 + 777 条专业详情，全部免费开源。</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.html">Read more →</a>
+          </div>
+        </article>
+      </li>
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/ledao-volunteer.html" rel="bookmark" title="Permalink to 我用2988所大学数据，做了一个高考志愿填报小程序">我用2988所大学数据，做了一个高考志愿填报小程序</a></h1>
+          </header>
+<div class="post-info">
+  <time datetime="2026-06-22T20:30:00+08:00">
+    2026-06-22
+  </time>
+    <span> · </span>
+    <span>项目</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/shu-ju.html">数据</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>
+    </span>
+</div>          <div class="entry-content">
+            <p>抓取30省3年录取数据，做了一个免费的高考志愿填报微信小程序，数据比很多收费App还全。</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/ledao-volunteer.html">Read more →</a>
+          </div>
+        </article>
+      </li>
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/write-review-feature.html" rel="bookmark" title="Permalink to 给 Claude Code 装上「写审分离」：一个写代码一个审，审的不改只挑毛病">给 Claude Code 装上「写审分离」：一个写代码一个审，审的不改只挑毛病</a></h1>
+          </header>
 <div class="post-info">
   <time datetime="2026-06-19T23:30:00+08:00">
     2026-06-19
@@ -37,197 +295,11 @@
         <a href="https://zerotodev-4jq.pages.dev/tag/ecc.html">ECC</a>
     </span>
 </div>          <div class="entry-content">
-            <p>用 Claude Code 写代码有个问题：写完就完了，没人帮你审。</p>
-<p>我之前也用过 <code>/code-review</code> 命令，但那是手动的——你得记得调，调完还得自己看报告、自己改。有时候写着写着就忘了审，有时候一个小改动也去审，白白浪费 token。</p>
-<h2>我想要的效果</h2>
-<p>很简单，就三句话：</p>
-<ol>
-<li><strong>一个写，一个审</strong> — 各干各的，不串台</li>
-<li><strong>审的不改代码</strong> — 审手只挑毛病，把问题列出来发给写手</li>
-<li><strong>自动判断</strong> — 我不知道啥时候该审，系统自己决定</li>
-</ol>
-<h2>做出来的东西</h2>
-<p>在 Claude Code 的 ECC 框架里做了一个 skill，叫 <code>write-review</code>。</p>
-<h3>角色分离</h3>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Writer（写手）</th>
-<th>Reviewer（审手）</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>读代码</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>写代码</td>
-<td>✅</td>
-<td>❌ 绝不允许</td>
-</tr>
-<tr>
-<td>分析问题</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>改代码</td>
-<td>✅</td>
-<td>❌</td>
-</tr>
-<tr>
-<td>提出修改建议</td>
-<td>—</td>
-<td>✅</td>
-</tr>
-</tbody>
-</table>
-<p>审手用的是 Claude Code 自带的 <code>code-reviewer</code> agent。这个 agent 本身就只有 Read、Grep、Glob、Bash 四个只读工具，天然就不能改代码。我要做的就是给它加个 prompt 约束，让它明白自己是 Reviewer 不是修理工。</p>
-<h3>工作流程</h3>
-<div class="highlight"><pre><span></span><code>你的任务 → Phase 0: 自动判断要不要审
-                ↓
-          Phase 1: 理解需求
-                ↓
-          Phase 2: Writer 写代码
-                ↓
-          Phase 3: Reviewer 审代码（只读不改！）
-                ↓
-          Phase 4: 有严重问题？→ 反馈给 Writer → 回到 Phase 2
-                   没问题？→ 通过！
-                ↓
-          Phase 5: 汇报结果
-</code></pre></div>
-
-<p>最多循环 3 轮。3 轮还过不了就停下来让你手动处理。</p>
-<h3>自动判断——解决"不知道啥时候该审"</h3>
-<p>这是最实用的部分。我在 Phase 0 放了一个决策矩阵：</p>
-<table>
-<thead>
-<tr>
-<th>维度</th>
-<th>🔴 走审</th>
-<th>🟢 跳过</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>规模</td>
-<td>新文件 / 多文件 / &gt;20行</td>
-<td>单行修改 / 单变量改名</td>
-</tr>
-<tr>
-<td>安全</td>
-<td>auth / 支付 / 用户数据</td>
-<td>无安全相关</td>
-</tr>
-<tr>
-<td>数据</td>
-<td>schema 变更 / 新查询</td>
-<td>没动数据库</td>
-</tr>
-<tr>
-<td>API</td>
-<td>新增接口 / 改签名</td>
-<td>内部调整</td>
-</tr>
-<tr>
-<td>业务</td>
-<td>核心逻辑 / 计算</td>
-<td>纯格式 / 注释</td>
-</tr>
-<tr>
-<td>重构</td>
-<td>行为有变化</td>
-<td>纯重命名</td>
-</tr>
-</tbody>
-</table>
-<p><strong>不确定时默认走审。</strong> 宁可多审一次，不要漏过问题。</p>
-<p>实际效果：</p>
-<ul>
-<li>你说"改个变量名" → 矩阵全部命中 🟢 → 直接改，300 token</li>
-<li>你说"写个登录接口" → 命中 🔴（新文件+auth+API）→ 自动走写审循环</li>
-<li>你说"加个注释" → 🟢 跳过</li>
-<li>你说"重构支付模块" → 🔴（多文件+安全+行为变化）→ 走审</li>
-</ul>
-<h3>Token 消耗</h3>
-<table>
-<thead>
-<tr>
-<th>场景</th>
-<th>不审</th>
-<th>自动审</th>
-<th>多花的</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>修改变量名</td>
-<td>300</td>
-<td>300（跳过）</td>
-<td>0</td>
-</tr>
-<tr>
-<td>新增工具函数</td>
-<td>3K</td>
-<td>8K</td>
-<td>+5K 但值得</td>
-</tr>
-<tr>
-<td>多文件功能</td>
-<td>8K</td>
-<td>26K（2轮）</td>
-<td>+18K 但值得</td>
-</tr>
-<tr>
-<td>安全相关</td>
-<td>5K</td>
-<td>20K（审+安全审）</td>
-<td>+15K 但必要</td>
-</tr>
-</tbody>
-</table>
-<p><strong>小改动不浪费，大改动不放过。</strong></p>
-<h2>怎么用</h2>
-<p>以后不用手动调命令了。平时正常说话写代码，系统会在后台自动判断。你觉得重要的东西它自动就审了，鸡毛蒜皮的直接跳过。</p>
-<p>想强制审查的时候，也可以手动调用：</p>
-<div class="highlight"><pre><span></span><code>/write-review 写一个支付回调处理接口
-</code></pre></div>
-
-<h2>测试了一下</h2>
-<p>创建了一个简单的 <code>demo-math-utils.js</code>，包含 <code>add</code> 和 <code>multiply</code> 两个函数。系统走了完整流程：</p>
-<ul>
-<li>Phase 0 判断：新文件 → 🔴 走审</li>
-<li>Phase 2：写代码（24行，含 JSDoc）</li>
-<li>Phase 3：code-reviewer 审代码</li>
-<li>Phase 4：0 CRITICAL、0 HIGH → 通过</li>
-</ul>
-<p>1 轮过审，review 报告保存在 <code>.claude/reviews/</code> 目录下。</p>
-<h2>踩的坑</h2>
-<ol>
-<li><strong>deepseek-v4-pro 安全分类器经常挂</strong> — 写文件的时候 Edit 被拦截了好几次，最后用 Write 整个覆写绕过了</li>
-<li><strong>skill 文件太长</strong> — 274 行的 SKILL.md，Edit 工具匹配 old_string 时如果不够精确就失败</li>
-<li><strong>Phase 0 的设计改了三次</strong> — 最开始想放在 CLAUDE.md 里，后来觉得太分散；想用 hook，又太重。最后放在 skill 的 Phase 0，既集中又不干扰其他流程</li>
-</ol>
-<h2>下一步想法</h2>
-<ul>
-<li>把审手从 code-reviewer 扩展到 security-reviewer，安全相关代码自动双审</li>
-<li>支持"审手意见分歧"——Writer 觉得审手说得不对的时候，可以反驳</li>
-<li>加个统计面板，看过去审了多少次、拦截了多少问题</li>
-</ul>
-<hr>
-<p>写代码有人审，跟没人审，出来的东西真的不一样。现在我的 Claude Code 会自己帮我盯着了 😎</p>
+            <p>在 Claude Code 里实现了一套写审分离机制——Writer 写代码，Reviewer 只审不改，问题反馈给 Writer 修改，循环直到通过。还加了自动判断，平时不用管，系统自己决定要不要审。</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/write-review-feature.html">Read more →</a>
           </div>
         </article>
-      </section>
-
-        <section id="content">
-          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
-          <ol id="posts-list">
-
+      </li>
 
 
 
@@ -402,62 +474,10 @@
         </article>
       </li>
 
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day1-summary.html" rel="bookmark" title="Permalink to Day 1：从不知道博客是什么，到拥有自己的网站">Day 1：从不知道博客是什么，到拥有自己的网站</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-01T22:49:00+08:00">
-    2026-06-01
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/qi-bu.html">起步</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/gitee.html">Gitee</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ge-ren-wang-zhan.html">个人网站</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>一个编程小白的第一天，从零开始搭建个人网站的完整记录</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day1-summary.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/first-post.html" rel="bookmark" title="Permalink to 从零开始：一个编程小白的折腾记录">从零开始：一个编程小白的折腾记录</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-01T20:30:00+08:00">
-    2026-06-01
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/qi-bu.html">起步</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/ai.html">AI</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>从装 Claude 到做出第一个程序，记录我从零开始的故事</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/first-post.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
           </ol>
-        </section>
+<nav style="display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-lg);">
+    <a href="https://zerotodev-4jq.pages.dev/author/zerotodev2.html">Next →</a>
+</nav>        </section>
 
 
 

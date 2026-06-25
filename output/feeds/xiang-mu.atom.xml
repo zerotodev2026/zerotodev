@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - 项目</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/xiang-mu.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-22T23:30:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>我花了两天，把高考志愿小程序做成了「专业版」—— 搜专业、看就业、查薪酬全有了</title><link href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.html" rel="alternate"/><published>2026-06-22T23:30:00+08:00</published><updated>2026-06-22T23:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-22:/ledao-volunteer-v2.html</id><summary type="html">&lt;p&gt;从零搭建的高考志愿填报助手迎来大更新：专业搜索倒排索引、阳光高考官方专业目录、Dashboard 首页，2988 所院校 + 777 条专业详情，全部免费开源。&lt;/p&gt;</summary><content type="html">&lt;h2&gt;前情提要&lt;/h2&gt;
+&lt;p&gt;两周前，家里考生愁志愿，市面上的 App 要么收费 99 块，要么广告关不掉。于是一怒之下自己动手，从掌上高考公开 API 抓了 30 省三年录取数据，做了一个微信小程序。&lt;/p&gt;
+&lt;p&gt;第一版只有三个功能：查院校、查分数线、意见反馈。能用，但粗糙。&lt;/p&gt;
+&lt;h2&gt;这几天做了什么&lt;/h2&gt;
+&lt;h3&gt;1. 专业查询 —— 赛博算命器&lt;/h3&gt;
+&lt;p&gt;填志愿最痛的点：你知道想学「计算机」，但不知道哪些学校有。传统做法是点开几百个学校一个一个翻——翻到第 20 个就疯了。&lt;/p&gt;
+&lt;p&gt;专业查询的逻辑是反过来的：&lt;strong&gt;你先说专业，系统告诉你哪些学校有&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;但这背后有个技术坑。录取数据是「省份→学校→专业」三层嵌套，18,000 条文档里嵌了 40 万条专业记录。直接扫整张表查一个专业名？云函数跑 6,000 条记录直接 60 秒超时。&lt;/p&gt;
+&lt;p&gt;最后做了个&lt;strong&gt;倒排索引&lt;/strong&gt;——把数据重新组织成「专业名→学校列表」的映射，709 个专业每个一条文档，用 &lt;code&gt;db.RegExp&lt;/code&gt; 在 &lt;code&gt;_id&lt;/code&gt; 上一发命中。查询从 30 秒降到 0.3 秒。&lt;/p&gt;
+&lt;p&gt;输入「计算机」三个字，本地立即联想出「计算机科学与技术」「计算机应用技术」「计算机网络技术」四个备选，点一个，所有开设院校按录取分从高到低排好，点开还能看各省分数。&lt;/p&gt;
+&lt;h3&gt;2. 专业目录 —— 这专业到底干嘛的&lt;/h3&gt;
+&lt;p&gt;另一个痛点：专业名字越来越魔幻。「智能感知工程」「区块链工程」「低空技术与工程」——名字听着酷炫，到底学什么？出来能干嘛？&lt;/p&gt;
+&lt;p&gt;找到了阳光高考网（chsi.com.cn，教育部直属）的公开 API，一个一个爬了 777 个专业的详细信息：
+- &lt;strong&gt;专业介绍&lt;/strong&gt;：培养目标和课程体系
+- &lt;strong&gt;就业方向&lt;/strong&gt;：具体到岗位名称（比如计算机出来是「软件开发工程师」「WEB 前端开发」「数据分析师」）
+- &lt;strong&gt;性别比例&lt;/strong&gt;：男生 72%/女生 28%，直观的进度条
+- &lt;strong&gt;学科门类&lt;/strong&gt;：工学/理学/医学/农学……十几个大类随便筛&lt;/p&gt;
+&lt;p&gt;这些数据全是官方来源，不是 AI 编的。比那些收费 App 里的「计算机专业好就业」强一百倍。&lt;/p&gt;
+&lt;h3&gt;3. 首页 Dashboard —— 终于不丑了&lt;/h3&gt;
+&lt;p&gt;第一版的首页就是几行文字排排站。改成了 2×2 卡片仪表盘：
+- 🏫 院校查询（蓝）
+- 📊 分数线（绿）
+- 🔍 专业查询（橙）
+- 📖 专业目录（紫）&lt;/p&gt;
+&lt;p&gt;每张卡片带 emoji 图标 + 功能描述 + 彩色顶条，点进去的页面统一有标题栏和返回按钮，不像之前有的页面是 tab 有的不是，体验割裂。&lt;/p&gt;
+&lt;h3&gt;4. 性能 —— 从「等半天」到「秒开」&lt;/h3&gt;
+&lt;p&gt;之前的小程序加载院校列表要 30 趟网络请求，在 4G 下转圈转到怀疑人生。&lt;/p&gt;
+&lt;p&gt;现在：
+- &lt;strong&gt;云函数合并请求&lt;/strong&gt;：5 路并发批量分页，30 趟合成 1 趟
+- &lt;strong&gt;客户端分页渲染&lt;/strong&gt;：2988 条数据存在模块变量里，&lt;code&gt;setData&lt;/code&gt; 只放当前页的 30 条
+- &lt;strong&gt;专业索引&lt;/strong&gt;：60 秒超时的全表扫描 → 0.3 秒的倒排索引查询
+- &lt;strong&gt;一键部署&lt;/strong&gt;：&lt;code&gt;seedAll&lt;/code&gt; 云函数自动链式执行，清空→院校→批次线→录取→专业索引，全自动&lt;/p&gt;
+&lt;h2&gt;技术栈&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;层&lt;/th&gt;
+&lt;th&gt;技术&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;前端&lt;/td&gt;
+&lt;td&gt;微信小程序原生&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;后端&lt;/td&gt;
+&lt;td&gt;云函数（Node.js）+ 云数据库&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;数据采集&lt;/td&gt;
+&lt;td&gt;Python 多线程 + API 爬取&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;数据源&lt;/td&gt;
+&lt;td&gt;掌上高考 / 阳光高考（教育部官方）&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2&gt;数据规模&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;2,988&lt;/strong&gt; 所院校&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;18,165&lt;/strong&gt; 条投档线文档，含 &lt;strong&gt;400,172&lt;/strong&gt; 条专业录取记录&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;709&lt;/strong&gt; 个唯一专业名，&lt;strong&gt;777&lt;/strong&gt; 条专业详情&lt;/li&gt;
+&lt;li&gt;覆盖 2023/2024/2025 三年，30 个省/直辖市&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;为什么开源&lt;/h2&gt;
+&lt;p&gt;高考志愿填报是信息战——越有钱的家庭越能买到更全的数据，普通家庭拿着省招办发的那本厚册子根本翻不过来。&lt;/p&gt;
+&lt;p&gt;这些数据本来就是公开的，整理好了免费给大家用。&lt;/p&gt;
+&lt;p&gt;代码在 GitHub 和 Gitee 各一份，MIT 协议，随便改。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;GitHub: https://github.com/zerotodev2026/ledao-volunteer&lt;/li&gt;
+&lt;li&gt;Gitee: https://gitee.com/from-scratch-to-development/ledao-volunteer&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;后续&lt;/h2&gt;
+&lt;p&gt;等 7 月高考分出，跑一行命令追加 2026 年新数据。备案通过后扫码就用。&lt;/p&gt;</content><category term="项目"/><category term="微信小程序"/><category term="高考"/><category term="Python"/><category term="云开发"/><category term="数据"/></entry><entry><title>我用2988所大学数据，做了一个高考志愿填报小程序</title><link href="https://zerotodev-4jq.pages.dev/ledao-volunteer.html" rel="alternate"/><published>2026-06-22T20:30:00+08:00</published><updated>2026-06-22T20:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-22:/ledao-volunteer.html</id><summary type="html">&lt;p&gt;抓取30省3年录取数据，做了一个免费的高考志愿填报微信小程序，数据比很多收费App还全。&lt;/p&gt;</summary><content type="html">&lt;h2&gt;为什么做这个&lt;/h2&gt;
+&lt;p&gt;6 月高考刚结束，家里有考生开始愁志愿。打开市面上的填志愿 App——要么收费 99 元，要么数据不全，要么广告弹到关不掉。&lt;/p&gt;
+&lt;p&gt;那就自己做一个。&lt;/p&gt;
+&lt;h2&gt;做到了什么&lt;/h2&gt;
+&lt;h3&gt;数据 — 全国 2988 所院校，真实录取分&lt;/h3&gt;
+&lt;p&gt;从掌上高考公开 API 抓取了 &lt;strong&gt;2023-2025 三年、覆盖 30 个省份&lt;/strong&gt; 的录取数据：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;2,988&lt;/strong&gt; 所院校基本信息 + 开设专业&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;18,165&lt;/strong&gt; 条投档线记录&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;400,172&lt;/strong&gt; 条专业录取线（含最低分和位次）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;与清华大学招生网、人民日报公开数据交叉核验，准确率 75%+。&lt;/p&gt;
+&lt;p&gt;数据还导出成了 Excel，筛选复制随便用。&lt;/p&gt;
+&lt;h3&gt;功能 — 三个页面，够用不臃肿&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;院校查询&lt;/strong&gt; — 2988 所学校秒开，按省份筛选、按名称搜索，点开展示开设专业列表。985/211/双一流都有标记。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;分数线查询&lt;/strong&gt; — 批次线、高校投档线、专业录取线三个 Tab。选年份、选院校省份、选考生省份，一键出结果。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;意见反馈&lt;/strong&gt; — 敏感词过滤 + 微信内容安全审核。&lt;/p&gt;
+&lt;h3&gt;技术 — 小程序就该快&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;云函数并行查询，院校列表 30 趟网络请求改 1 趟&lt;/li&gt;
+&lt;li&gt;客户端分页渲染，2988 条数据一次只渲染 30 条，滚动加载&lt;/li&gt;
+&lt;li&gt;一键部署：&lt;code&gt;seedAll&lt;/code&gt; 云函数自动清空 + 灌入全量数据，不用手动分批&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;技术栈：微信原生 + 云开发 CloudBase + Python 数据采集&lt;/p&gt;
+&lt;h2&gt;为什么开源&lt;/h2&gt;
+&lt;p&gt;志愿填报不该是信息差生意。数据来自公开渠道，整理好了免费给大家用。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;等备案通过，扫码就能用。&lt;/strong&gt; 代码已开源：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;GitHub: https://github.com/zerotodev2026/ledao-volunteer&lt;/li&gt;
+&lt;li&gt;Gitee: https://gitee.com/from-scratch-to-development/ledao-volunteer&lt;/li&gt;
+&lt;/ul&gt;</content><category term="项目"/><category term="微信小程序"/><category term="高考"/><category term="数据"/><category term="Python"/><category term="云开发"/></entry></feed>

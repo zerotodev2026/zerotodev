@@ -1,5 +1,178 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - Project</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/project.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-05T23:00:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>CleanBuddy v1.1 — UI大改 + 多项修复</title><link href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html" rel="alternate"/><published>2026-06-05T23:00:00+08:00</published><updated>2026-06-05T23:00:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-05:/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html</id><summary type="html">&lt;p&gt;今天对 CleanBuddy 做了一次大更新，从 UI 到功能都做了不少改进和修复。&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - Project</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/project.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-25T20:30:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>微信小程序「专业查询」重构全记录</title><link href="https://zerotodev-4jq.pages.dev/major-query-rebuild.html" rel="alternate"/><published>2026-06-25T20:30:00+08:00</published><updated>2026-06-25T20:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-25:/major-query-rebuild.html</id><summary type="html">&lt;h1&gt;微信小程序「专业查询」功能重构全记录&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;从一次搜索到完整展开交互，从 500 条数据截断到 180 万全量索引——乐道志愿助理专业 …&lt;/p&gt;&lt;/blockquote&gt;</summary><content type="html">&lt;h1&gt;微信小程序「专业查询」功能重构全记录&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;从一次搜索到完整展开交互，从 500 条数据截断到 180 万全量索引——乐道志愿助理专业查询模块的蜕变过程。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2&gt;一、起点：一个简单的搜索框&lt;/h2&gt;
+&lt;p&gt;改版前的专业查询页只有基本功能：输入专业名 → 搜到院校列表 → 展开看该院校匹配的几个专业和分数范围。交互到此为止。&lt;/p&gt;
+&lt;p&gt;问题很明显：
+- &lt;strong&gt;看不到三年完整数据&lt;/strong&gt; — 只能看分数范围
+- &lt;strong&gt;看不到院校其他专业&lt;/strong&gt; — 只显示搜到的那个
+- &lt;strong&gt;看不到专业详情&lt;/strong&gt; — 没有概述、就业方向
+- &lt;strong&gt;没有导航出口&lt;/strong&gt; — 搜完就困住了&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;二、新设计：一站式院校卡片&lt;/h2&gt;
+&lt;p&gt;目标：用户搜一个专业 → 看到招生院校 → 点开展示全部。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;搜索&amp;quot;法学&amp;quot;
+  → 院校卡片列表（重庆地区招生院校 × 200+）
+  → 展开&amp;quot;西南政法大学&amp;quot;：
+    ├─ 🏫 院校简介（可折叠）
+    ├─ ⭐ 法学 ← 搜索专业排第一，高亮
+    │   ├─ 2023: 559分 | 2024: 587分 | 2025: 582分
+    │   └─ [专业详情 ▸] 概述 / 男女比例 / 就业方向
+    ├─ 知识产权
+    │   ├─ 三年分数
+    │   └─ [专业详情 ▸]
+    └─ 刑事科学技术 ...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;关键技术决策：&lt;strong&gt;展开时懒加载&lt;/strong&gt;，不预取全部数据。点院校才调云函数拉取数据，同一次搜索内缓存。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;三、踩坑：西南政法大学怎么搜不到？&lt;/h2&gt;
+&lt;p&gt;用户选了重庆生源地，搜"法学"，西南政法大学竟然不在结果里。这是西南政法啊——中国法学的招牌院校。&lt;/p&gt;
+&lt;h3&gt;排查过程&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;第一层：年份过滤。&lt;/strong&gt; 前端去掉了年份选择器，&lt;code&gt;queryMajors&lt;/code&gt; 默认只查 2025 年。但西南政法每年都有法学——不是这个问题。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;第二层：省份匹配。&lt;/strong&gt; 数据里的省份是"重庆市"（带市），用户选的是"重庆"（不带市）。云函数做的是 &lt;code&gt;===&lt;/code&gt; 严格比较。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;// ❌ 旧代码&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;entry&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;p&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;!==&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;province&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;trim&lt;/span&gt;&lt;span class="p"&gt;())&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;continue&lt;/span&gt;
+
+&lt;span class="c1"&gt;// ✅ 修复后&lt;/span&gt;
+&lt;span class="kd"&gt;const&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;qProv&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;province&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;trim&lt;/span&gt;&lt;span class="p"&gt;().&lt;/span&gt;&lt;span class="nx"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="sr"&gt;/市$/&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kd"&gt;const&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;eProv&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;entry&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;p&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;||&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;).&lt;/span&gt;&lt;span class="nx"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="sr"&gt;/市$/&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;qProv&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;!==&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;eProv&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;continue&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;修完后多了 4 所学校，但西南政法还是没出现。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;第三层：数据截断。&lt;/strong&gt; 查原始 admission 数据，西南政法 + 法学 + 重庆的记录确实存在（559 分）。但 &lt;code&gt;build_major_index.py&lt;/code&gt; 里有一行：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;MAX_PER_MAJOR&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;500&lt;/span&gt;  &lt;span class="c1"&gt;# 每个专业只保留前 500 条&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;"法学"是全国最热门的专业之一，全国数百所法学院校 × 30 省份 × 3 年 = 数千条记录。559 分排不进前 500，被直接截掉了。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;修复：直接取消截断限制。&lt;/strong&gt; 180 万条记录全部保留。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;四、踩坑：60 秒超时&lt;/h2&gt;
+&lt;p&gt;索引从 48 个 chunk 暴涨到 151 个，原来一次性灌入的方案在 60 秒内跑不完。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;修复：链式分批。&lt;/strong&gt; 每次只处理 15 个 chunk，完成后 fire-and-forget 调用下一步。151 个文件分 11 步自动串行跑完。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;// 每步结尾&lt;/span&gt;
+&lt;span class="nx"&gt;cloud&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;callFunction&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nx"&gt;name&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;seedMajorIndex&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nx"&gt;data&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;step&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;step&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}).&lt;/span&gt;&lt;span class="k"&gt;catch&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;e&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;console&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;error&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;链式调用失败:&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;e&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;message&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;hr&gt;
+&lt;h2&gt;五、200+ 所学校怎么办？&lt;/h2&gt;
+&lt;p&gt;法学搜出 200+ 所学校，用户需要快速定位。加了两个筛选：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;院校名称搜索&lt;/strong&gt;：客户端即时过滤，输入"西南"马上只显示相关学校&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;院校所在省份&lt;/strong&gt;：选"重庆"只显示重庆的大学，云函数端过滤&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;后者在 &lt;code&gt;queryMajors&lt;/code&gt; 里先查 &lt;code&gt;universities&lt;/code&gt; 拿到该省全部院校名，再与专业索引结果取交集。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;六、其他细节改进&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;问题&lt;/th&gt;
+&lt;th&gt;解决&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;展开院校后滚动位置不对&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;_scrollToExpandedCard()&lt;/code&gt; 自动滚到卡片顶部&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;返回直接退出页面&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;onBackPress&lt;/code&gt; 拦截，展开时先折叠再退出&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;页面销毁后仍在处理数据&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;_aborted&lt;/code&gt; 标记 + 所有异步回调检查&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;--&lt;/code&gt; 无说明&lt;/td&gt;
+&lt;td&gt;竖排注释"表示该校当年未开设此专业"&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;在校人数缺少前缀&lt;/td&gt;
+&lt;td&gt;补上"在校生 X 人"&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2&gt;七、最终架构&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pages/major/major.js ───── 搜索入口
+  ├─ queryMajors (云函数) ── major_index 倒排索引
+  │   ├─ RegExp 匹配专业名
+  │   ├─ 省份/年份/科类/院校省份 过滤
+  │   └─ 返回按学校分组的结果
+  │
+  └─ 展开院校:
+      ├─ getSchoolAllMajors (云函数)
+      │   ├─ universities → 院校简介
+      │   ├─ admission → 全部专业 + 三年分数
+      │   └─ major_details → 专业百科
+      │
+      └─ 懒加载专业详情:
+          └─ getMajorDetails (已有云函数)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;hr&gt;
+&lt;h2&gt;八、改动的文件清单&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;文件&lt;/th&gt;
+&lt;th&gt;改动&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;scripts/build_major_index.py&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;取消 500 条截断&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;cloudfunctions/seedMajorIndex/index.js&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;链式分批灌入&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;cloudfunctions/queryMajors/index.js&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;省份兼容 + year:all + 院校省份筛选&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;cloudfunctions/getSchoolAllMajors/*&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;&lt;strong&gt;新建&lt;/strong&gt;，展开院校数据&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;pages/major/major.js&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;展开逻辑 + 返回拦截 + 院校筛选 + 退出清理&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;pages/major/major.wxml&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;新展开视图 + 院校筛选栏&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;code&gt;pages/major/major.wxss&lt;/code&gt;&lt;/td&gt;
+&lt;td&gt;展开视图全套样式&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2&gt;九、部署清单&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;部署 &lt;code&gt;seedMajorIndex&lt;/code&gt;（已跑完，数据已在库）&lt;/li&gt;
+&lt;li&gt;部署 &lt;code&gt;queryMajors&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;部署 &lt;code&gt;getSchoolAllMajors&lt;/code&gt;（首次）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;三个云函数部署完即可上线。&lt;/p&gt;
+&lt;hr&gt;
+&lt;blockquote&gt;
+&lt;p&gt;2026-06-25 · 乐道志愿助理 · Claude Code&lt;/p&gt;
+&lt;/blockquote&gt;</content><category term="Project"/><category term="微信小程序"/><category term="云开发"/><category term="踩坑"/><category term="乐道志愿助理"/></entry><entry><title>CleanBuddy v1.1 — UI大改 + 多项修复</title><link href="https://zerotodev-4jq.pages.dev/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html" rel="alternate"/><published>2026-06-05T23:00:00+08:00</published><updated>2026-06-05T23:00:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-05:/cleanbuddy-v11-uida-gai-duo-xiang-xiu-fu.html</id><summary type="html">&lt;p&gt;今天对 CleanBuddy 做了一次大更新，从 UI 到功能都做了不少改进和修复。&lt;/p&gt;
 &lt;!-- more --&gt;
 
 &lt;h2&gt;🎨 UI 大改&lt;/h2&gt;

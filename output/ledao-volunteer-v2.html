@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>我花了两天，把高考志愿小程序做成了「专业版」—— 搜专业、看就业、查薪酬全有了 — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+    <link href="https://zerotodev-4jq.pages.dev/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="ZeroToDev Atom Feed" />
+</head>
+
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
+
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">我花了两天，把高考志愿小程序做成了「专业版」—— 搜专业、看就业、查薪酬全有了</h1>
+    </header>
+<div class="post-info">
+  <time datetime="2026-06-22T23:30:00+08:00">
+    2026-06-22
+  </time>
+    <span> · </span>
+    <span>项目</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/shu-ju.html">数据</a>
+    </span>
+</div>    <div class="entry-content">
+      <h2>前情提要</h2>
+<p>两周前，家里考生愁志愿，市面上的 App 要么收费 99 块，要么广告关不掉。于是一怒之下自己动手，从掌上高考公开 API 抓了 30 省三年录取数据，做了一个微信小程序。</p>
+<p>第一版只有三个功能：查院校、查分数线、意见反馈。能用，但粗糙。</p>
+<h2>这几天做了什么</h2>
+<h3>1. 专业查询 —— 赛博算命器</h3>
+<p>填志愿最痛的点：你知道想学「计算机」，但不知道哪些学校有。传统做法是点开几百个学校一个一个翻——翻到第 20 个就疯了。</p>
+<p>专业查询的逻辑是反过来的：<strong>你先说专业，系统告诉你哪些学校有</strong>。</p>
+<p>但这背后有个技术坑。录取数据是「省份→学校→专业」三层嵌套，18,000 条文档里嵌了 40 万条专业记录。直接扫整张表查一个专业名？云函数跑 6,000 条记录直接 60 秒超时。</p>
+<p>最后做了个<strong>倒排索引</strong>——把数据重新组织成「专业名→学校列表」的映射，709 个专业每个一条文档，用 <code>db.RegExp</code> 在 <code>_id</code> 上一发命中。查询从 30 秒降到 0.3 秒。</p>
+<p>输入「计算机」三个字，本地立即联想出「计算机科学与技术」「计算机应用技术」「计算机网络技术」四个备选，点一个，所有开设院校按录取分从高到低排好，点开还能看各省分数。</p>
+<h3>2. 专业目录 —— 这专业到底干嘛的</h3>
+<p>另一个痛点：专业名字越来越魔幻。「智能感知工程」「区块链工程」「低空技术与工程」——名字听着酷炫，到底学什么？出来能干嘛？</p>
+<p>找到了阳光高考网（chsi.com.cn，教育部直属）的公开 API，一个一个爬了 777 个专业的详细信息：
+- <strong>专业介绍</strong>：培养目标和课程体系
+- <strong>就业方向</strong>：具体到岗位名称（比如计算机出来是「软件开发工程师」「WEB 前端开发」「数据分析师」）
+- <strong>性别比例</strong>：男生 72%/女生 28%，直观的进度条
+- <strong>学科门类</strong>：工学/理学/医学/农学……十几个大类随便筛</p>
+<p>这些数据全是官方来源，不是 AI 编的。比那些收费 App 里的「计算机专业好就业」强一百倍。</p>
+<h3>3. 首页 Dashboard —— 终于不丑了</h3>
+<p>第一版的首页就是几行文字排排站。改成了 2×2 卡片仪表盘：
+- 🏫 院校查询（蓝）
+- 📊 分数线（绿）
+- 🔍 专业查询（橙）
+- 📖 专业目录（紫）</p>
+<p>每张卡片带 emoji 图标 + 功能描述 + 彩色顶条，点进去的页面统一有标题栏和返回按钮，不像之前有的页面是 tab 有的不是，体验割裂。</p>
+<h3>4. 性能 —— 从「等半天」到「秒开」</h3>
+<p>之前的小程序加载院校列表要 30 趟网络请求，在 4G 下转圈转到怀疑人生。</p>
+<p>现在：
+- <strong>云函数合并请求</strong>：5 路并发批量分页，30 趟合成 1 趟
+- <strong>客户端分页渲染</strong>：2988 条数据存在模块变量里，<code>setData</code> 只放当前页的 30 条
+- <strong>专业索引</strong>：60 秒超时的全表扫描 → 0.3 秒的倒排索引查询
+- <strong>一键部署</strong>：<code>seedAll</code> 云函数自动链式执行，清空→院校→批次线→录取→专业索引，全自动</p>
+<h2>技术栈</h2>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>技术</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>前端</td>
+<td>微信小程序原生</td>
+</tr>
+<tr>
+<td>后端</td>
+<td>云函数（Node.js）+ 云数据库</td>
+</tr>
+<tr>
+<td>数据采集</td>
+<td>Python 多线程 + API 爬取</td>
+</tr>
+<tr>
+<td>数据源</td>
+<td>掌上高考 / 阳光高考（教育部官方）</td>
+</tr>
+</tbody>
+</table>
+<h2>数据规模</h2>
+<ul>
+<li><strong>2,988</strong> 所院校</li>
+<li><strong>18,165</strong> 条投档线文档，含 <strong>400,172</strong> 条专业录取记录</li>
+<li><strong>709</strong> 个唯一专业名，<strong>777</strong> 条专业详情</li>
+<li>覆盖 2023/2024/2025 三年，30 个省/直辖市</li>
+</ul>
+<h2>为什么开源</h2>
+<p>高考志愿填报是信息战——越有钱的家庭越能买到更全的数据，普通家庭拿着省招办发的那本厚册子根本翻不过来。</p>
+<p>这些数据本来就是公开的，整理好了免费给大家用。</p>
+<p>代码在 GitHub 和 Gitee 各一份，MIT 协议，随便改。</p>
+<ul>
+<li>GitHub: https://github.com/zerotodev2026/ledao-volunteer</li>
+<li>Gitee: https://gitee.com/from-scratch-to-development/ledao-volunteer</li>
+</ul>
+<h2>后续</h2>
+<p>等 7 月高考分出，跑一行命令追加 2026 年新数据。备案通过后扫码就用。</p>
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>, <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>, <a href="https://zerotodev-4jq.pages.dev/tag/python.html">Python</a>, <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>, <a href="https://zerotodev-4jq.pages.dev/tag/shu-ju.html">数据</a></p>
+      </footer>
+  </article>
+</section>
+
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
+
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
+</html>

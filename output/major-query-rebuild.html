@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>微信小程序「专业查询」重构全记录 — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+    <link href="https://zerotodev-4jq.pages.dev/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="ZeroToDev Atom Feed" />
+</head>
+
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
+
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">微信小程序「专业查询」重构全记录</h1>
+    </header>
+<div class="post-info">
+  <time datetime="2026-06-25T20:30:00+08:00">
+    2026-06-25
+  </time>
+    <span> · </span>
+    <span>Project</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/cai-keng.html">踩坑</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/le-dao-zhi-yuan-zhu-li.html">乐道志愿助理</a>
+    </span>
+</div>    <div class="entry-content">
+      <h1>微信小程序「专业查询」功能重构全记录</h1>
+<blockquote>
+<p>从一次搜索到完整展开交互，从 500 条数据截断到 180 万全量索引——乐道志愿助理专业查询模块的蜕变过程。</p>
+</blockquote>
+<hr>
+<h2>一、起点：一个简单的搜索框</h2>
+<p>改版前的专业查询页只有基本功能：输入专业名 → 搜到院校列表 → 展开看该院校匹配的几个专业和分数范围。交互到此为止。</p>
+<p>问题很明显：
+- <strong>看不到三年完整数据</strong> — 只能看分数范围
+- <strong>看不到院校其他专业</strong> — 只显示搜到的那个
+- <strong>看不到专业详情</strong> — 没有概述、就业方向
+- <strong>没有导航出口</strong> — 搜完就困住了</p>
+<hr>
+<h2>二、新设计：一站式院校卡片</h2>
+<p>目标：用户搜一个专业 → 看到招生院校 → 点开展示全部。</p>
+<div class="highlight"><pre><span></span><code>搜索&quot;法学&quot;
+  → 院校卡片列表（重庆地区招生院校 × 200+）
+  → 展开&quot;西南政法大学&quot;：
+    ├─ 🏫 院校简介（可折叠）
+    ├─ ⭐ 法学 ← 搜索专业排第一，高亮
+    │   ├─ 2023: 559分 | 2024: 587分 | 2025: 582分
+    │   └─ [专业详情 ▸] 概述 / 男女比例 / 就业方向
+    ├─ 知识产权
+    │   ├─ 三年分数
+    │   └─ [专业详情 ▸]
+    └─ 刑事科学技术 ...
+</code></pre></div>
+
+<p>关键技术决策：<strong>展开时懒加载</strong>，不预取全部数据。点院校才调云函数拉取数据，同一次搜索内缓存。</p>
+<hr>
+<h2>三、踩坑：西南政法大学怎么搜不到？</h2>
+<p>用户选了重庆生源地，搜"法学"，西南政法大学竟然不在结果里。这是西南政法啊——中国法学的招牌院校。</p>
+<h3>排查过程</h3>
+<p><strong>第一层：年份过滤。</strong> 前端去掉了年份选择器，<code>queryMajors</code> 默认只查 2025 年。但西南政法每年都有法学——不是这个问题。</p>
+<p><strong>第二层：省份匹配。</strong> 数据里的省份是"重庆市"（带市），用户选的是"重庆"（不带市）。云函数做的是 <code>===</code> 严格比较。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// ❌ 旧代码</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">entry</span><span class="p">.</span><span class="nx">p</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="nx">province</span><span class="p">.</span><span class="nx">trim</span><span class="p">())</span><span class="w"> </span><span class="k">continue</span>
+
+<span class="c1">// ✅ 修复后</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">qProv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">province</span><span class="p">.</span><span class="nx">trim</span><span class="p">().</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/市$/</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">eProv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="nx">entry</span><span class="p">.</span><span class="nx">p</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/市$/</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">qProv</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="nx">eProv</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span>
+</code></pre></div>
+
+<p>修完后多了 4 所学校，但西南政法还是没出现。</p>
+<p><strong>第三层：数据截断。</strong> 查原始 admission 数据，西南政法 + 法学 + 重庆的记录确实存在（559 分）。但 <code>build_major_index.py</code> 里有一行：</p>
+<div class="highlight"><pre><span></span><code><span class="n">MAX_PER_MAJOR</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># 每个专业只保留前 500 条</span>
+</code></pre></div>
+
+<p>"法学"是全国最热门的专业之一，全国数百所法学院校 × 30 省份 × 3 年 = 数千条记录。559 分排不进前 500，被直接截掉了。</p>
+<p><strong>修复：直接取消截断限制。</strong> 180 万条记录全部保留。</p>
+<hr>
+<h2>四、踩坑：60 秒超时</h2>
+<p>索引从 48 个 chunk 暴涨到 151 个，原来一次性灌入的方案在 60 秒内跑不完。</p>
+<p><strong>修复：链式分批。</strong> 每次只处理 15 个 chunk，完成后 fire-and-forget 调用下一步。151 个文件分 11 步自动串行跑完。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// 每步结尾</span>
+<span class="nx">cloud</span><span class="p">.</span><span class="nx">callFunction</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;seedMajorIndex&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">step</span><span class="o">:</span><span class="w"> </span><span class="nx">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}).</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;链式调用失败:&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">message</span><span class="p">))</span>
+</code></pre></div>
+
+<hr>
+<h2>五、200+ 所学校怎么办？</h2>
+<p>法学搜出 200+ 所学校，用户需要快速定位。加了两个筛选：</p>
+<ul>
+<li><strong>院校名称搜索</strong>：客户端即时过滤，输入"西南"马上只显示相关学校</li>
+<li><strong>院校所在省份</strong>：选"重庆"只显示重庆的大学，云函数端过滤</li>
+</ul>
+<p>后者在 <code>queryMajors</code> 里先查 <code>universities</code> 拿到该省全部院校名，再与专业索引结果取交集。</p>
+<hr>
+<h2>六、其他细节改进</h2>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>解决</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>展开院校后滚动位置不对</td>
+<td><code>_scrollToExpandedCard()</code> 自动滚到卡片顶部</td>
+</tr>
+<tr>
+<td>返回直接退出页面</td>
+<td><code>onBackPress</code> 拦截，展开时先折叠再退出</td>
+</tr>
+<tr>
+<td>页面销毁后仍在处理数据</td>
+<td><code>_aborted</code> 标记 + 所有异步回调检查</td>
+</tr>
+<tr>
+<td><code>--</code> 无说明</td>
+<td>竖排注释"表示该校当年未开设此专业"</td>
+</tr>
+<tr>
+<td>在校人数缺少前缀</td>
+<td>补上"在校生 X 人"</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>七、最终架构</h2>
+<div class="highlight"><pre><span></span><code>pages/major/major.js ───── 搜索入口
+  ├─ queryMajors (云函数) ── major_index 倒排索引
+  │   ├─ RegExp 匹配专业名
+  │   ├─ 省份/年份/科类/院校省份 过滤
+  │   └─ 返回按学校分组的结果
+  │
+  └─ 展开院校:
+      ├─ getSchoolAllMajors (云函数)
+      │   ├─ universities → 院校简介
+      │   ├─ admission → 全部专业 + 三年分数
+      │   └─ major_details → 专业百科
+      │
+      └─ 懒加载专业详情:
+          └─ getMajorDetails (已有云函数)
+</code></pre></div>
+
+<hr>
+<h2>八、改动的文件清单</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>改动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/build_major_index.py</code></td>
+<td>取消 500 条截断</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/seedMajorIndex/index.js</code></td>
+<td>链式分批灌入</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/queryMajors/index.js</code></td>
+<td>省份兼容 + year:all + 院校省份筛选</td>
+</tr>
+<tr>
+<td><code>cloudfunctions/getSchoolAllMajors/*</code></td>
+<td><strong>新建</strong>，展开院校数据</td>
+</tr>
+<tr>
+<td><code>pages/major/major.js</code></td>
+<td>展开逻辑 + 返回拦截 + 院校筛选 + 退出清理</td>
+</tr>
+<tr>
+<td><code>pages/major/major.wxml</code></td>
+<td>新展开视图 + 院校筛选栏</td>
+</tr>
+<tr>
+<td><code>pages/major/major.wxss</code></td>
+<td>展开视图全套样式</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>九、部署清单</h2>
+<ol>
+<li>部署 <code>seedMajorIndex</code>（已跑完，数据已在库）</li>
+<li>部署 <code>queryMajors</code></li>
+<li>部署 <code>getSchoolAllMajors</code>（首次）</li>
+</ol>
+<p>三个云函数部署完即可上线。</p>
+<hr>
+<blockquote>
+<p>2026-06-25 · 乐道志愿助理 · Claude Code</p>
+</blockquote>
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>, <a href="https://zerotodev-4jq.pages.dev/tag/yun-kai-fa.html">云开发</a>, <a href="https://zerotodev-4jq.pages.dev/tag/cai-keng.html">踩坑</a>, <a href="https://zerotodev-4jq.pages.dev/tag/le-dao-zhi-yuan-zhu-li.html">乐道志愿助理</a></p>
+      </footer>
+  </article>
+</section>
+
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
+
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
+</html>
