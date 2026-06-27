@@ -1,5 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - 项目</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/xiang-mu.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-27T23:30:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>一个 else if 引发的血案 —— 记一次高考志愿小程序的 bug 修复</title><link href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.1.1.html" rel="alternate"/><published>2026-06-27T23:30:00+08:00</published><updated>2026-06-27T23:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-27:/ledao-volunteer-v2.1.1.html</id><summary type="html">&lt;p&gt;修复了三个叠加 bug：综合科类分类逻辑缺陷导致旧高考省份分数全空、preloadData 响应超 1MB、seedAll 云函数部署失败。核心教训：else if 和两个独立 if，差一个字符，差一整个省份的数据。&lt;/p&gt;</summary><content type="html">&lt;h2&gt;起因&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>ZeroToDev - 项目</title><link href="https://zerotodev-4jq.pages.dev/" rel="alternate"/><link href="https://zerotodev-4jq.pages.dev/feeds/xiang-mu.atom.xml" rel="self"/><id>https://zerotodev-4jq.pages.dev/</id><updated>2026-06-27T23:59:00+08:00</updated><subtitle>From Zero To Developer</subtitle><entry><title>从分数到位次，从学校到专业——智能匹对模块的设计迭代</title><link href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.2.html" rel="alternate"/><published>2026-06-27T23:59:00+08:00</published><updated>2026-06-27T23:59:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-27:/ledao-volunteer-v2.2.html</id><summary type="html">&lt;p&gt;乐道志愿助理 v2.2 新增智能匹对模块，考生输入位次即可自动匹配院校专业。从分数匹配到位次匹配、从学校级到专业级，三次方案迭代的全过程记录。&lt;/p&gt;</summary><content type="html">&lt;h2&gt;需求&lt;/h2&gt;
+&lt;p&gt;高考出分后，考生同时知道自己的&lt;strong&gt;分数和全省位次&lt;/strong&gt;。v2.1 的查询功能让用户能查到任何学校任何专业的历年录取线，但致命问题是——考生不知道自己的分能上什么学校，要一个个去翻。&lt;/p&gt;
+&lt;p&gt;市场上成熟的志愿填报 App 都有这个功能：输入分数，自动推荐冲/稳/保院校。我们也得做。&lt;/p&gt;
+&lt;h2&gt;第一次方案：分数匹配&lt;/h2&gt;
+&lt;p&gt;最初的想法很简单——用户输入分数，跟各校三年投档线比对，分三档：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;档位&lt;/th&gt;
+&lt;th&gt;条件&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;冲&lt;/td&gt;
+&lt;td&gt;用户分 - 学校均分 ∈ [-30, -5)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;稳&lt;/td&gt;
+&lt;td&gt;差值 ∈ [-5, +15]&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;保&lt;/td&gt;
+&lt;td&gt;差值 &amp;gt; +15&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;数据直接复用现有的 &lt;code&gt;preloadData&lt;/code&gt; 缓存，客户端纯计算，瞬间出结果。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;被否决了。&lt;/strong&gt; 原因：每年试卷难度不同，今年 620 分可能相当于去年 600 分的排名。用分数跨年比较，天然不准。&lt;/p&gt;
+&lt;h2&gt;第二次方案：位次匹配，学校级&lt;/h2&gt;
+&lt;p&gt;既然位次跨年稳定，就改用位次。用户输入位次，系统比对每所学校在你生源地、你科类下的三年录取位次。&lt;/p&gt;
+&lt;p&gt;更进一步，不用绝对位次差（5000 名的差距在河南和北京含义完全不同），改用&lt;strong&gt;百分比阈值&lt;/strong&gt;：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;diff% = (考生位次 - 学校均位次) / 学校均位次 × 100%
+
+保底: diff% &amp;lt; -8%    (考生明显优于学校)
+稳妥: -8% ≤ diff% ≤ +15%
+冲刺: +15% &amp;lt; diff% ≤ +30%
+排除: diff% &amp;gt; +30%
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;又被否决了。&lt;/strong&gt; 因为"学校位次"到底取哪个？一所学校几十个专业，位次从 3500 到 15000。取最差专业的位次作为学校门槛——用户位次 12000，给重庆大学标"保底"。但他只能上哲学，根本进不了计算机。&lt;/p&gt;
+&lt;p&gt;这个"保底"标签在误导用户。&lt;/p&gt;
+&lt;h2&gt;第三次方案：位次匹配，专业级&lt;/h2&gt;
+&lt;p&gt;这才是对的——&lt;strong&gt;匹配对象应该是专业，不是学校&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;云函数遍历全省三年全部 admission 数据（~40 万条专业记录），对每个 (学校, 专业, 科类) 三元组计算加权均位次，逐专业分档，再按学校聚合返回。&lt;/p&gt;
+&lt;p&gt;用户看到的不再是"重庆大学 保底"，而是：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;🏫 重庆大学  [985] [重庆]
+─────────────────────────
+保底：哲学(均位次 15000, -20%)
+稳妥：土木(均位次 8000, +6%)  数学(均位次 7800, +9%)
+冲刺：计算机(均位次 3500, +143%)
+─────────────────────────
+查看院校详情 →
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;每个学校卡片内直接展示哪些专业能稳上、哪些要冲。&lt;/p&gt;
+&lt;h2&gt;架构&lt;/h2&gt;
+&lt;p&gt;40 万条专业数据 → 客户端扛不住（1MB 传输限制 + 手机算力）。改为服务端计算：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="err"&gt;首页选省份&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;→&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;preloadData&lt;/span&gt;&lt;span class="err"&gt;（已有云函数，新增&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;行）&lt;/span&gt;
+&lt;span class="w"&gt;              &lt;/span&gt;&lt;span class="err"&gt;└→&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;后台写入&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_match_cache&lt;/span&gt;&lt;span class="err"&gt;（专业位次预缓存）&lt;/span&gt;
+
+&lt;span class="err"&gt;用户点「智能匹对」→&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;输入位次&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;科类&lt;/span&gt;
+&lt;span class="w"&gt;              &lt;/span&gt;&lt;span class="err"&gt;└→&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;matchSchools&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;云函数&lt;/span&gt;
+&lt;span class="w"&gt;                   &lt;/span&gt;&lt;span class="err"&gt;├&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;读&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_match_cache&lt;/span&gt;&lt;span class="err"&gt;（命中率&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="mi"&gt;95&lt;/span&gt;&lt;span class="o"&gt;%&lt;/span&gt;&lt;span class="err"&gt;，&lt;/span&gt;&lt;span class="o"&gt;~&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="n"&gt;ms&lt;/span&gt;&lt;span class="err"&gt;）&lt;/span&gt;
+&lt;span class="w"&gt;                   &lt;/span&gt;&lt;span class="err"&gt;├&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;逐专业加权均位次&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;→&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;分档&lt;/span&gt;
+&lt;span class="w"&gt;                   &lt;/span&gt;&lt;span class="err"&gt;├&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;按学校聚合，每档&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;top&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;专业&lt;/span&gt;
+&lt;span class="w"&gt;                   &lt;/span&gt;&lt;span class="err"&gt;└&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;返回三档结果&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;首次匹配 ~300ms，后续切换筛选条件客户端本地过滤，&amp;lt;10ms。&lt;/p&gt;
+&lt;h2&gt;一个编译坑&lt;/h2&gt;
+&lt;p&gt;页面写好后，首页变成空白。排查发现是 &lt;code&gt;require('../../utils/match')&lt;/code&gt; 导致微信开发者工具编译失败——项目中其他页面都没在顶层用 &lt;code&gt;require&lt;/code&gt;。把工具函数内联到页面 JS 中，同时避免箭头函数/async/await/模板字符串等 ES6 特性，解决。&lt;/p&gt;
+&lt;p&gt;云函数也踩了坑：&lt;code&gt;config.json&lt;/code&gt; 必须单行，&lt;code&gt;package.json&lt;/code&gt; 必须显式声明 &lt;code&gt;wx-server-sdk&lt;/code&gt; 依赖，否则超时只有 3 秒、SDK 找不到。&lt;/p&gt;
+&lt;h2&gt;小结&lt;/h2&gt;
+&lt;p&gt;这次迭代的核心教训：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;匹配对象决定实用性&lt;/strong&gt;。用户关心的是"我能上什么专业"，不是"我能进哪个学校"。学校级匹配看似省事，实际产出的信息价值很低。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;位次 &amp;gt; 分数&lt;/strong&gt;。高考分数跨年不可比，位次才是硬通货。感谢现有数据里 m 字段带 rank，不需要额外爬一分一段表。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;百分比 &amp;gt; 绝对值&lt;/strong&gt;。同样 5000 名的分差，在河南和北京含义天差地别。百分比阈值自动适配各省考生规模。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;免责声明不是点缀&lt;/strong&gt;。算法预测不能当录取保证，页面上黄色警示框必须醒目。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;整个模块从方案设计到交付，总共新增了 1 个云函数、4 个页面文件，修改了 2 个云函数和 3 个首页文件。v2.2 的乐道志愿，现在有了真正意义上的"智能"。&lt;/p&gt;</content><category term="项目"/><category term="微信小程序"/><category term="高考"/><category term="志愿填报"/><category term="位次匹配"/><category term="算法"/></entry><entry><title>一个 else if 引发的血案 —— 记一次高考志愿小程序的 bug 修复</title><link href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.1.1.html" rel="alternate"/><published>2026-06-27T23:30:00+08:00</published><updated>2026-06-27T23:30:00+08:00</updated><author><name>ZeroToDev</name></author><id>tag:zerotodev-4jq.pages.dev,2026-06-27:/ledao-volunteer-v2.1.1.html</id><summary type="html">&lt;p&gt;修复了三个叠加 bug：综合科类分类逻辑缺陷导致旧高考省份分数全空、preloadData 响应超 1MB、seedAll 云函数部署失败。核心教训：else if 和两个独立 if，差一个字符，差一整个省份的数据。&lt;/p&gt;</summary><content type="html">&lt;h2&gt;起因&lt;/h2&gt;
 &lt;p&gt;用户反馈：生源地选陕西后，高校录取线里几乎全部学校都没有物理类分数。专业查询选「首选物理」，只出来一个上海海事大学。&lt;/p&gt;
 &lt;p&gt;诡异的是，v2.1 昨天刚修过"科类匹配修复"。&lt;/p&gt;
 &lt;h2&gt;调查&lt;/h2&gt;

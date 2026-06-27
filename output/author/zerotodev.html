@@ -22,7 +22,128 @@
 
       <section id="featured">
         <article>
-          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.1.1.html">一个 else if 引发的血案 —— 记一次高考志愿小程序的 bug 修复</a></h1>
+          <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.2.html">从分数到位次，从学校到专业——智能匹对模块的设计迭代</a></h1>
+<div class="post-info">
+  <time datetime="2026-06-27T23:59:00+08:00">
+    2026-06-27
+  </time>
+    <span> · </span>
+    <span>项目</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/zhi-yuan-tian-bao.html">志愿填报</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-ci-pi-pei.html">位次匹配</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/suan-fa.html">算法</a>
+    </span>
+</div>          <div class="entry-content">
+            <h2>需求</h2>
+<p>高考出分后，考生同时知道自己的<strong>分数和全省位次</strong>。v2.1 的查询功能让用户能查到任何学校任何专业的历年录取线，但致命问题是——考生不知道自己的分能上什么学校，要一个个去翻。</p>
+<p>市场上成熟的志愿填报 App 都有这个功能：输入分数，自动推荐冲/稳/保院校。我们也得做。</p>
+<h2>第一次方案：分数匹配</h2>
+<p>最初的想法很简单——用户输入分数，跟各校三年投档线比对，分三档：</p>
+<table>
+<thead>
+<tr>
+<th>档位</th>
+<th>条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>冲</td>
+<td>用户分 - 学校均分 ∈ [-30, -5)</td>
+</tr>
+<tr>
+<td>稳</td>
+<td>差值 ∈ [-5, +15]</td>
+</tr>
+<tr>
+<td>保</td>
+<td>差值 &gt; +15</td>
+</tr>
+</tbody>
+</table>
+<p>数据直接复用现有的 <code>preloadData</code> 缓存，客户端纯计算，瞬间出结果。</p>
+<p><strong>被否决了。</strong> 原因：每年试卷难度不同，今年 620 分可能相当于去年 600 分的排名。用分数跨年比较，天然不准。</p>
+<h2>第二次方案：位次匹配，学校级</h2>
+<p>既然位次跨年稳定，就改用位次。用户输入位次，系统比对每所学校在你生源地、你科类下的三年录取位次。</p>
+<p>更进一步，不用绝对位次差（5000 名的差距在河南和北京含义完全不同），改用<strong>百分比阈值</strong>：</p>
+<div class="highlight"><pre><span></span><code>diff% = (考生位次 - 学校均位次) / 学校均位次 × 100%
+
+保底: diff% &lt; -8%    (考生明显优于学校)
+稳妥: -8% ≤ diff% ≤ +15%
+冲刺: +15% &lt; diff% ≤ +30%
+排除: diff% &gt; +30%
+</code></pre></div>
+
+<p><strong>又被否决了。</strong> 因为"学校位次"到底取哪个？一所学校几十个专业，位次从 3500 到 15000。取最差专业的位次作为学校门槛——用户位次 12000，给重庆大学标"保底"。但他只能上哲学，根本进不了计算机。</p>
+<p>这个"保底"标签在误导用户。</p>
+<h2>第三次方案：位次匹配，专业级</h2>
+<p>这才是对的——<strong>匹配对象应该是专业，不是学校</strong>。</p>
+<p>云函数遍历全省三年全部 admission 数据（~40 万条专业记录），对每个 (学校, 专业, 科类) 三元组计算加权均位次，逐专业分档，再按学校聚合返回。</p>
+<p>用户看到的不再是"重庆大学 保底"，而是：</p>
+<div class="highlight"><pre><span></span><code>🏫 重庆大学  [985] [重庆]
+─────────────────────────
+保底：哲学(均位次 15000, -20%)
+稳妥：土木(均位次 8000, +6%)  数学(均位次 7800, +9%)
+冲刺：计算机(均位次 3500, +143%)
+─────────────────────────
+查看院校详情 →
+</code></pre></div>
+
+<p>每个学校卡片内直接展示哪些专业能稳上、哪些要冲。</p>
+<h2>架构</h2>
+<p>40 万条专业数据 → 客户端扛不住（1MB 传输限制 + 手机算力）。改为服务端计算：</p>
+<div class="highlight"><pre><span></span><code><span class="err">首页选省份</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">preloadData</span><span class="err">（已有云函数，新增</span><span class="w"> </span><span class="o">+</span><span class="mi">30</span><span class="w"> </span><span class="err">行）</span>
+<span class="w">              </span><span class="err">└→</span><span class="w"> </span><span class="err">后台写入</span><span class="w"> </span><span class="n">_match_cache</span><span class="err">（专业位次预缓存）</span>
+
+<span class="err">用户点「智能匹对」→</span><span class="w"> </span><span class="err">输入位次</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">科类</span>
+<span class="w">              </span><span class="err">└→</span><span class="w"> </span><span class="n">matchSchools</span><span class="w"> </span><span class="err">云函数</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">读</span><span class="w"> </span><span class="n">_match_cache</span><span class="err">（命中率</span><span class="w"> </span><span class="o">&gt;</span><span class="mi">95</span><span class="o">%</span><span class="err">，</span><span class="o">~</span><span class="mi">100</span><span class="n">ms</span><span class="err">）</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">逐专业加权均位次</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">分档</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">按学校聚合，每档</span><span class="w"> </span><span class="n">top</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="err">专业</span>
+<span class="w">                   </span><span class="err">└</span><span class="w"> </span><span class="err">返回三档结果</span>
+</code></pre></div>
+
+<p>首次匹配 ~300ms，后续切换筛选条件客户端本地过滤，&lt;10ms。</p>
+<h2>一个编译坑</h2>
+<p>页面写好后，首页变成空白。排查发现是 <code>require('../../utils/match')</code> 导致微信开发者工具编译失败——项目中其他页面都没在顶层用 <code>require</code>。把工具函数内联到页面 JS 中，同时避免箭头函数/async/await/模板字符串等 ES6 特性，解决。</p>
+<p>云函数也踩了坑：<code>config.json</code> 必须单行，<code>package.json</code> 必须显式声明 <code>wx-server-sdk</code> 依赖，否则超时只有 3 秒、SDK 找不到。</p>
+<h2>小结</h2>
+<p>这次迭代的核心教训：</p>
+<ol>
+<li>
+<p><strong>匹配对象决定实用性</strong>。用户关心的是"我能上什么专业"，不是"我能进哪个学校"。学校级匹配看似省事，实际产出的信息价值很低。</p>
+</li>
+<li>
+<p><strong>位次 &gt; 分数</strong>。高考分数跨年不可比，位次才是硬通货。感谢现有数据里 m 字段带 rank，不需要额外爬一分一段表。</p>
+</li>
+<li>
+<p><strong>百分比 &gt; 绝对值</strong>。同样 5000 名的分差，在河南和北京含义天差地别。百分比阈值自动适配各省考生规模。</p>
+</li>
+<li>
+<p><strong>免责声明不是点缀</strong>。算法预测不能当录取保证，页面上黄色警示框必须醒目。</p>
+</li>
+</ol>
+<p>整个模块从方案设计到交付，总共新增了 1 个云函数、4 个页面文件，修改了 2 个云函数和 3 个首页文件。v2.2 的乐道志愿，现在有了真正意义上的"智能"。</p>
+          </div>
+        </article>
+      </section>
+
+        <section id="content">
+          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
+          <ol id="posts-list">
+
+
+
+
+
+      <li>
+        <article class="hentry">
+          <header>
+            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.1.1.html" rel="bookmark" title="Permalink to 一个 else if 引发的血案 —— 记一次高考志愿小程序的 bug 修复">一个 else if 引发的血案 —— 记一次高考志愿小程序的 bug 修复</a></h1>
+          </header>
 <div class="post-info">
   <time datetime="2026-06-27T23:30:00+08:00">
     2026-06-27
@@ -37,110 +158,11 @@
         <a href="https://zerotodev-4jq.pages.dev/tag/bugxiu-fu.html">bug修复</a>
     </span>
 </div>          <div class="entry-content">
-            <h2>起因</h2>
-<p>用户反馈：生源地选陕西后，高校录取线里几乎全部学校都没有物理类分数。专业查询选「首选物理」，只出来一个上海海事大学。</p>
-<p>诡异的是，v2.1 昨天刚修过"科类匹配修复"。</p>
-<h2>调查</h2>
-<p>我打开 <code>seedAll/provinces/陕西.json</code>，搜 <code>首选物理</code> —— 0 个匹配。搜 <code>首选历史</code> —— 179 个。搜 <code>综合</code> —— 遍地都是。</p>
-<p>原来陕西等省份至今仍用旧高考的「综合」科类（不分物理/历史），数据里压根没有 <code>首选物理</code> 这个 key。那为什么综合数据没显示出来？</p>
-<p>翻到 <code>queryScores/index.js</code> 的科类分类逻辑：</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// v2.1 的代码（昨天刚改的）</span>
-<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">cat</span><span class="p">,</span><span class="w"> </span><span class="nx">score</span><span class="p">]</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">entries</span><span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">s</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;首选历史&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;综合&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;历史&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;文科&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="nx">historyScore</span><span class="w">   </span><span class="c1">// 综合钉死在历史</span>
-<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;首选物理&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;物理&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;理科&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="nx">physicsScore</span><span class="w">   </span><span class="c1">// 永远收不到综合</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p>看到了吗？第 118 行，<code>综合</code> 在 <code>if</code> 的第一个分支里。第 121 行是 <code>else if</code>。<code>综合</code> 进了历史就出不来了，物理类永远为空。</p>
-<p><strong>一个 <code>else</code>，六个省的数据消失。</strong></p>
-<h2>修复</h2>
-<div class="highlight"><pre><span></span><code><span class="c1">// v2.1.1：改成两个独立 if</span>
-<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">cat</span><span class="p">,</span><span class="w"> </span><span class="nx">score</span><span class="p">]</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">entries</span><span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">s</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;首选历史&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;综合&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;历史&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;文科&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="nx">historyScore</span><span class="w">   </span><span class="c1">// 综合也能进历史</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;首选物理&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">&#39;综合&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;物理&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">cat</span><span class="p">.</span><span class="nx">includes</span><span class="p">(</span><span class="s1">&#39;理科&#39;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="err">→</span><span class="w"> </span><span class="nx">physicsScore</span><span class="w">   </span><span class="c1">// 综合也能进物理</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><code>else</code> 删掉，两个 <code>if</code> 各走各的。<code>综合</code> 同时出现在两边，旧高考省份不再空数据。</p>
-<p>但这只是第一个 bug。</p>
-<h2>连锁反应</h2>
-<p>改完代码后发现还有两个问题：</p>
-<p><strong>数据源本身也有缺失。</strong> <code>seedAll</code> 目录下 6 个省份（上海、北京、天津、安徽、山西、陕西）的 JSON 文件压根没有 <code>首选物理</code> 字段，连那 1 条记录都没了。这些文件是另一套数据管道产出的，比 <code>seedData</code> 少了大量记录。直接把 <code>seedData</code> 的正确版本复制过去。</p>
-<p><strong>preloadData 云函数炸了。</strong> 我在云函数里把 <code>综合</code> 数据全量合并到 <code>首选物理</code> 和 <code>首选历史</code> 的 browseByCat 索引中，同一份数据在 JSON 响应里出现三次。陕西这种综合量大省直接飙过 1MB 上限，报 <code>response size exceeded</code>。</p>
-<p>解法：云函数不合并，改由前端 <code>major.js</code> 在读取缓存时自行回落：</p>
-<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="nx">catData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">cache</span><span class="p">.</span><span class="nx">browseByCat</span><span class="p">[</span><span class="k">this</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">selectedCategory</span><span class="p">]</span>
-<span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="o">!</span><span class="nx">catData</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">Object</span><span class="p">.</span><span class="nx">keys</span><span class="p">(</span><span class="nx">catData</span><span class="p">).</span><span class="nx">length</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">0</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">selectedCategory</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="s1">&#39;综合&#39;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">catData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">cache</span><span class="p">.</span><span class="nx">browseByCat</span><span class="p">[</span><span class="s1">&#39;综合&#39;</span><span class="p">]</span><span class="w">  </span><span class="c1">// 前端回落，数据不丢，传输不翻倍</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><strong>seedAll 云函数完全不工作。</strong> <code>getProvinceFiles()</code> 在 v2.1 重构时被误删；链式 <code>cloud.callFunction</code> 自调用在云环境里网络超时；Node 版本不支持 <code>Promise.allSettled</code>；还有个 15MB 的 <code>admission_data.json.gz</code> 加载了但从来不用的死代码。全部重写了一遍。</p>
-<h2>涉及文件</h2>
-<table>
-<thead>
-<tr>
-<th>文件</th>
-<th>改动</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>queryScores/index.js</code></td>
-<td>else if → 两个独立 if</td>
-</tr>
-<tr>
-<td><code>preloadData/index.js</code></td>
-<td>同上 + 撤回 browseByCat 合并</td>
-</tr>
-<tr>
-<td><code>queryMajors/index.js</code></td>
-<td>browse 回落综合 + search 不过滤综合</td>
-</tr>
-<tr>
-<td><code>pages/score/score.js</code></td>
-<td>前端同步修复</td>
-</tr>
-<tr>
-<td><code>pages/major/major.js</code></td>
-<td>读缓存时空→回落综合</td>
-</tr>
-<tr>
-<td><code>seedAll/index.js</code></td>
-<td>重写（polyfill、去链式、恢复函数）</td>
-</tr>
-<tr>
-<td><code>seedAll/provinces/*.json</code> (6个)</td>
-<td>从 seedData 复制修复</td>
-</tr>
-<tr>
-<td><code>seedMajorIndex/chunks/*.json</code> (151个)</td>
-<td>重建索引，1,801,972 条</td>
-</tr>
-</tbody>
-</table>
-<h2>教训</h2>
-<ol>
-<li><strong><code>if/else if</code> vs 两个 <code>if</code></strong> —— 当数据分类不是互斥的，不要用 <code>else if</code>。旧高考的「综合」既不是物理也不是历史的子集，它是两者共有。</li>
-<li><strong>不要在云函数里复制数据</strong> —— 把 <code>综合</code> 合并到三个 browseByCat 里看起来方便了前端，实际把响应撑爆了。让前端做回落，传输只传一份。</li>
-<li><strong>死代码不只是难看</strong> —— 15MB 的 <code>.gz</code> 文件加载但从不使用，直接把云函数包体积撑大、部署失败。删掉。</li>
-</ol>
-<hr>
-<p><em>代码已开源在 <a href="https://github.com/zerotodev2026/ledao-volunteer">GitHub</a> 和 <a href="https://gitee.com/from-scratch-to-development/ledao-volunteer">Gitee</a>。</em></p>
+            <p>修复了三个叠加 bug：综合科类分类逻辑缺陷导致旧高考省份分数全空、preloadData 响应超 1MB、seedAll 云函数部署失败。核心教训：else if 和两个独立 if，差一个字符，差一整个省份的数据。</p>
+            <a class="readmore" href="https://zerotodev-4jq.pages.dev/ledao-volunteer-v2.1.1.html">Read more →</a>
           </div>
         </article>
-      </section>
-
-        <section id="content">
-          <h2 style="margin-bottom: var(--space-md); font-size: 1.25rem; color: var(--color-text-secondary);">More articles</h2>
-          <ol id="posts-list">
-
+      </li>
 
 
 
@@ -367,33 +389,6 @@
 </div>          <div class="entry-content">
             <p>Claude Code 终端版不能看图，每次都要截图→粘贴→描述，太痛苦了。我决定自己动手做个工具。这中间踩了不少坑，来回改了好几版，最终做成了一个通用的截图分析 Skill。</p>
             <a class="readmore" href="https://zerotodev-4jq.pages.dev/screenshot-tool.html">Read more →</a>
-          </div>
-        </article>
-      </li>
-
-
-
-
-      <li>
-        <article class="hentry">
-          <header>
-            <h1 class="entry-title"><a href="https://zerotodev-4jq.pages.dev/day3-deploy.html" rel="bookmark" title="Permalink to 部署个人网站：从 Pelican 到 Cloudflare Pages">部署个人网站：从 Pelican 到 Cloudflare Pages</a></h1>
-          </header>
-<div class="post-info">
-  <time datetime="2026-06-03T22:45:00+08:00">
-    2026-06-03
-  </time>
-    <span> · </span>
-    <span>博客</span>
-    <span class="tags">
-        <a href="https://zerotodev-4jq.pages.dev/tag/pelican.html">Pelican</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/cloudflare.html">Cloudflare</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/bu-shu.html">部署</a>
-        <a href="https://zerotodev-4jq.pages.dev/tag/jing-tai-wang-zhan.html">静态网站</a>
-    </span>
-</div>          <div class="entry-content">
-            <p>用 Pelican 搭建静态博客，部署到 Cloudflare Pages，实现一键构建发布。记录整个流程和踩坑经历。</p>
-            <a class="readmore" href="https://zerotodev-4jq.pages.dev/day3-deploy.html">Read more →</a>
           </div>
         </article>
       </li>

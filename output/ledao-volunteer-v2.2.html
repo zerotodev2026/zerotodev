@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="Pelican" />
+  <title>从分数到位次，从学校到专业——智能匹对模块的设计迭代 — ZeroToDev</title>
+  <link rel="stylesheet" href="https://zerotodev-4jq.pages.dev/theme/css/main.css" />
+    <link href="https://zerotodev-4jq.pages.dev/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="ZeroToDev Atom Feed" />
+</head>
+
+<body>
+  <header id="banner">
+    <h1><a href="https://zerotodev-4jq.pages.dev/">ZeroToDev <strong>From Zero To Developer</strong></a></h1>
+    <nav>
+      <ul>
+      </ul>
+    </nav>
+  </header>
+
+<section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">从分数到位次，从学校到专业——智能匹对模块的设计迭代</h1>
+    </header>
+<div class="post-info">
+  <time datetime="2026-06-27T23:59:00+08:00">
+    2026-06-27
+  </time>
+    <span> · </span>
+    <span>项目</span>
+    <span class="tags">
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/zhi-yuan-tian-bao.html">志愿填报</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/wei-ci-pi-pei.html">位次匹配</a>
+        <a href="https://zerotodev-4jq.pages.dev/tag/suan-fa.html">算法</a>
+    </span>
+</div>    <div class="entry-content">
+      <h2>需求</h2>
+<p>高考出分后，考生同时知道自己的<strong>分数和全省位次</strong>。v2.1 的查询功能让用户能查到任何学校任何专业的历年录取线，但致命问题是——考生不知道自己的分能上什么学校，要一个个去翻。</p>
+<p>市场上成熟的志愿填报 App 都有这个功能：输入分数，自动推荐冲/稳/保院校。我们也得做。</p>
+<h2>第一次方案：分数匹配</h2>
+<p>最初的想法很简单——用户输入分数，跟各校三年投档线比对，分三档：</p>
+<table>
+<thead>
+<tr>
+<th>档位</th>
+<th>条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>冲</td>
+<td>用户分 - 学校均分 ∈ [-30, -5)</td>
+</tr>
+<tr>
+<td>稳</td>
+<td>差值 ∈ [-5, +15]</td>
+</tr>
+<tr>
+<td>保</td>
+<td>差值 &gt; +15</td>
+</tr>
+</tbody>
+</table>
+<p>数据直接复用现有的 <code>preloadData</code> 缓存，客户端纯计算，瞬间出结果。</p>
+<p><strong>被否决了。</strong> 原因：每年试卷难度不同，今年 620 分可能相当于去年 600 分的排名。用分数跨年比较，天然不准。</p>
+<h2>第二次方案：位次匹配，学校级</h2>
+<p>既然位次跨年稳定，就改用位次。用户输入位次，系统比对每所学校在你生源地、你科类下的三年录取位次。</p>
+<p>更进一步，不用绝对位次差（5000 名的差距在河南和北京含义完全不同），改用<strong>百分比阈值</strong>：</p>
+<div class="highlight"><pre><span></span><code>diff% = (考生位次 - 学校均位次) / 学校均位次 × 100%
+
+保底: diff% &lt; -8%    (考生明显优于学校)
+稳妥: -8% ≤ diff% ≤ +15%
+冲刺: +15% &lt; diff% ≤ +30%
+排除: diff% &gt; +30%
+</code></pre></div>
+
+<p><strong>又被否决了。</strong> 因为"学校位次"到底取哪个？一所学校几十个专业，位次从 3500 到 15000。取最差专业的位次作为学校门槛——用户位次 12000，给重庆大学标"保底"。但他只能上哲学，根本进不了计算机。</p>
+<p>这个"保底"标签在误导用户。</p>
+<h2>第三次方案：位次匹配，专业级</h2>
+<p>这才是对的——<strong>匹配对象应该是专业，不是学校</strong>。</p>
+<p>云函数遍历全省三年全部 admission 数据（~40 万条专业记录），对每个 (学校, 专业, 科类) 三元组计算加权均位次，逐专业分档，再按学校聚合返回。</p>
+<p>用户看到的不再是"重庆大学 保底"，而是：</p>
+<div class="highlight"><pre><span></span><code>🏫 重庆大学  [985] [重庆]
+─────────────────────────
+保底：哲学(均位次 15000, -20%)
+稳妥：土木(均位次 8000, +6%)  数学(均位次 7800, +9%)
+冲刺：计算机(均位次 3500, +143%)
+─────────────────────────
+查看院校详情 →
+</code></pre></div>
+
+<p>每个学校卡片内直接展示哪些专业能稳上、哪些要冲。</p>
+<h2>架构</h2>
+<p>40 万条专业数据 → 客户端扛不住（1MB 传输限制 + 手机算力）。改为服务端计算：</p>
+<div class="highlight"><pre><span></span><code><span class="err">首页选省份</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">preloadData</span><span class="err">（已有云函数，新增</span><span class="w"> </span><span class="o">+</span><span class="mi">30</span><span class="w"> </span><span class="err">行）</span>
+<span class="w">              </span><span class="err">└→</span><span class="w"> </span><span class="err">后台写入</span><span class="w"> </span><span class="n">_match_cache</span><span class="err">（专业位次预缓存）</span>
+
+<span class="err">用户点「智能匹对」→</span><span class="w"> </span><span class="err">输入位次</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="err">科类</span>
+<span class="w">              </span><span class="err">└→</span><span class="w"> </span><span class="n">matchSchools</span><span class="w"> </span><span class="err">云函数</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">读</span><span class="w"> </span><span class="n">_match_cache</span><span class="err">（命中率</span><span class="w"> </span><span class="o">&gt;</span><span class="mi">95</span><span class="o">%</span><span class="err">，</span><span class="o">~</span><span class="mi">100</span><span class="n">ms</span><span class="err">）</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">逐专业加权均位次</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="err">分档</span>
+<span class="w">                   </span><span class="err">├</span><span class="w"> </span><span class="err">按学校聚合，每档</span><span class="w"> </span><span class="n">top</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="err">专业</span>
+<span class="w">                   </span><span class="err">└</span><span class="w"> </span><span class="err">返回三档结果</span>
+</code></pre></div>
+
+<p>首次匹配 ~300ms，后续切换筛选条件客户端本地过滤，&lt;10ms。</p>
+<h2>一个编译坑</h2>
+<p>页面写好后，首页变成空白。排查发现是 <code>require('../../utils/match')</code> 导致微信开发者工具编译失败——项目中其他页面都没在顶层用 <code>require</code>。把工具函数内联到页面 JS 中，同时避免箭头函数/async/await/模板字符串等 ES6 特性，解决。</p>
+<p>云函数也踩了坑：<code>config.json</code> 必须单行，<code>package.json</code> 必须显式声明 <code>wx-server-sdk</code> 依赖，否则超时只有 3 秒、SDK 找不到。</p>
+<h2>小结</h2>
+<p>这次迭代的核心教训：</p>
+<ol>
+<li>
+<p><strong>匹配对象决定实用性</strong>。用户关心的是"我能上什么专业"，不是"我能进哪个学校"。学校级匹配看似省事，实际产出的信息价值很低。</p>
+</li>
+<li>
+<p><strong>位次 &gt; 分数</strong>。高考分数跨年不可比，位次才是硬通货。感谢现有数据里 m 字段带 rank，不需要额外爬一分一段表。</p>
+</li>
+<li>
+<p><strong>百分比 &gt; 绝对值</strong>。同样 5000 名的分差，在河南和北京含义天差地别。百分比阈值自动适配各省考生规模。</p>
+</li>
+<li>
+<p><strong>免责声明不是点缀</strong>。算法预测不能当录取保证，页面上黄色警示框必须醒目。</p>
+</li>
+</ol>
+<p>整个模块从方案设计到交付，总共新增了 1 个云函数、4 个页面文件，修改了 2 个云函数和 3 个首页文件。v2.2 的乐道志愿，现在有了真正意义上的"智能"。</p>
+    </div>
+      <footer>
+        <p>Tags: <a href="https://zerotodev-4jq.pages.dev/tag/wei-xin-xiao-cheng-xu.html">微信小程序</a>, <a href="https://zerotodev-4jq.pages.dev/tag/gao-kao.html">高考</a>, <a href="https://zerotodev-4jq.pages.dev/tag/zhi-yuan-tian-bao.html">志愿填报</a>, <a href="https://zerotodev-4jq.pages.dev/tag/wei-ci-pi-pei.html">位次匹配</a>, <a href="https://zerotodev-4jq.pages.dev/tag/suan-fa.html">算法</a></p>
+      </footer>
+  </article>
+</section>
+
+  <section id="extras">
+      <div class="blogroll">
+        <h2>Links</h2>
+        <ul>
+            <li><a href="https://getpelican.com/">Pelican</a></li>
+            <li><a href="https://www.python.org/">Python.org</a></li>
+        </ul>
+      </div>
+      <div class="social">
+        <h2>Social</h2>
+        <ul>
+            <li><a href="https://github.com/zerotodev">GitHub</a></li>
+            <li><a href="https://gitee.com/zerotodev">Gitee</a></li>
+        </ul>
+      </div>
+  </section>
+
+  <footer id="contentinfo">
+    <p>© ZeroToDev. Powered by <a href="https://getpelican.com/">Pelican</a>.</p>
+  </footer>
+</body>
+</html>
